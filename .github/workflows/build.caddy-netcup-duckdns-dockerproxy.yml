@@ -38,7 +38,8 @@ jobs:
 
       - name: Parse Caddy version
         id: version
-        run: echo "version=$(grep -Eo 'caddy:[0-9]+\.[0-9]+\.[0-9]+$' $DOCKER_NAME/Dockerfile | cut -d ':' -f2)" | tee -a $GITHUB_OUTPUT
+        run: |
+          echo "version=$(grep -Eo 'caddy:[0-9]+\.[0-9]+\.[0-9]+$' $DOCKER_NAME/Dockerfile | cut -d ':' -f2)" | tee -a $GITHUB_OUTPUT
 
       - name: Generate image metadata with Caddy version
         uses: docker/metadata-action@v5
@@ -48,8 +49,12 @@ jobs:
             docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}
             ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}
           tags: |
-            type=raw,value=${{ steps.version.outputs.version }}
-            type=raw,value=latest
+            type=semver,pattern={{version}},value=v${{ steps.version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=v${{ steps.version.outputs.version }}
+            type=semver,pattern={{major}},value=v${{ steps.version.outputs.version }}
+            latest
+            ${{ github.ref_name }}
+            ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           labels: |
             org.opencontainers.image.title=${{ env.DOCKER_NAME }}
             org.opencontainers.image.description=${{ env.DOCKER_DESCRIPTION }}
@@ -93,6 +98,10 @@ jobs:
           file: ./${{ env.DOCKER_NAME }}/Dockerfile
           push: true
           provenance: false
-          tags: ${{ needs.metadata.outputs.tags }}
+          tags: |
+            ${{ needs.metadata.outputs.tags }}
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:latest
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:${{ github.ref_name }}
+            ${{ github.ref_type == 'tag' && format('ghcr.io/{0}/{1}:{2}', github.actor, env.DOCKER_NAME, github.ref_name) || '' }}
           labels: ${{ needs.metadata.outputs.labels }}
           platforms: ${{ needs.metadata.outputs.platforms }}
