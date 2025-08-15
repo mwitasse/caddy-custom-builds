@@ -18,8 +18,8 @@ RUN echo "Building with Caddy version: ${CADDY_VERSION}"
 # xcaddy installieren
 RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
-# Caddy + Module bauen (ohne Leerzeichen zwischen build und Version)
-RUN xcaddy build $CADDY_VERSION \
+# Caddy + Module bauen (using latest)
+RUN xcaddy build \
     --with github.com/caddy-dns/netcup \
     --replace github.com/libdns/netcup=github.com/Monviech/libdns-netcup@libdns-patch \
     --with github.com/caddy-dns/duckdns \
