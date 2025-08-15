@@ -18,11 +18,14 @@ RUN echo "Building with Caddy version: ${CADDY_VERSION}"
 # xcaddy installieren
 RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
-# Caddy + Module bauen (using latest)
-RUN xcaddy build \
+# Caddy + Module bauen mit explizitem Output-Pfad
+RUN xcaddy build --output /go/bin/caddy \
     --with github.com/caddy-dns/netcup \
     --with github.com/caddy-dns/duckdns \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2
+
+# Prüfe ob die Binary erstellt wurde
+RUN ls -la /go/bin/caddy && chmod +x /go/bin/caddy
 
 # Finales schlankes Caddy-Image (hardcoded Version als Workaround)
 FROM caddy:2.10.0
