@@ -34,16 +34,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Parse Caddy version
+      - name: Set Caddy version from Dockerfile ARG
         id: version
         run: |
-          # Caddy-Version aus Dockerfile extrahieren (funktioniert auch mit -builder)
-          VERSION=$(grep -Eo 'caddy:[0-9]+\.[0-9]+\.[0-9]+' $DOCKER_NAME/Dockerfile | head -n1 | cut -d':' -f2)
-          if [ -z "$VERSION" ]; then
-            echo "Caddy version not found in Dockerfile!"
-            exit 1
-          fi
-          echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
+          # Lies CADDY_VERSION aus Dockerfile-ARG
+          CADDY_VERSION=$(grep -E '^ARG CADDY_VERSION=' $DOCKER_NAME/Dockerfile | cut -d '=' -f2)
+          echo "version=$CADDY_VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate image metadata
         uses: docker/metadata-action@v5
