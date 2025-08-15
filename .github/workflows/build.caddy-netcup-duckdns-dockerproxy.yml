@@ -77,15 +77,17 @@ jobs:
             | cut -d ' ' -f2)
           echo "go_version=${GO_VERSION}" >> $GITHUB_OUTPUT
 
-  # Job 3: Docker image bauen und pushen
+  # Job 3: Build and publish Docker image
   build:
     name: Build and publish Docker image
     runs-on: ubuntu-latest
-    needs: [metadata, go-version]
+    needs: metadata
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -106,10 +108,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Debug metadata outputs
-        run: |
-          echo "tags from metadata: ${{ needs.metadata.outputs.tags }}"
-
       - name: Build and publish container image
         uses: docker/build-push-action@v6
         id: build
@@ -118,12 +116,13 @@ jobs:
           file: ./${{ env.DOCKER_NAME }}/Dockerfile
           push: true
           provenance: false
+          platforms: ${{ needs.metadata.outputs.platforms }}
           build-args: |
-            CADDY_VERSION=2.10.0
+            CADDY_VERSION=${{ env.CADDY_VERSION }}
+            GO_VERSION=1.24
           tags: |
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v2.10.0
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ env.CADDY_VERSION }}
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ env.CADDY_VERSION }}
             docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:latest
-            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v2.10.0
             ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:latest
           labels: ${{ needs.metadata.outputs.labels }}
-          platforms: ${{ needs.metadata.outputs.platforms }}
