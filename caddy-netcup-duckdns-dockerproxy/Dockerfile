@@ -12,7 +12,7 @@ ENV PATH="/go/bin:${PATH}"
 RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
 # Caddy + Module bauen
-RUN xcaddy build v${CADDY_VERSION} \
+RUN xcaddy build ${CADDY_VERSION} \
     --with github.com/caddy-dns/netcup \
     --replace github.com/libdns/netcup=github.com/Monviech/libdns-netcup@libdns-patch \
     --with github.com/caddy-dns/duckdns \
