@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Build-Argumente für Go- und Caddy-Version
+# Build-Argumente für Go- und Caddy-Version (global verfügbar)
 ARG GO_VERSION=1.24
 ARG CADDY_VERSION=2.10.0
 
@@ -22,7 +22,6 @@ RUN xcaddy build v${CADDY_VERSION} \
     --with github.com/caddy-dns/duckdns \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2
 
-
 # ARG vor FROM für finalen Stage verfügbar machen
 ARG CADDY_VERSION
 
@@ -30,6 +29,7 @@ ARG CADDY_VERSION
 FROM caddy:${CADDY_VERSION}
 
 # ENV für Runtime verfügbar machen
+ARG CADDY_VERSION
 ENV CADDY_VERSION=${CADDY_VERSION}
 
 # Kopiere die gebaute Caddy-Binary
