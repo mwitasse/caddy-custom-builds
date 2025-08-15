@@ -3,18 +3,20 @@
 # Build-Argumente für Go- und Caddy-Version
 ARG GO_VERSION=1.24
 ARG CADDY_VERSION=2.10.0
-ENV CADDY_VERSION=${CADDY_VERSION}
 
 # Builder-Stage
 FROM golang:${GO_VERSION} AS builder
-ENV PATH="/go/bin:${PATH}"
+
+# ARG nochmals deklarieren für diesen Stage
+ARG CADDY_VERSION
 ENV CADDY_VERSION=${CADDY_VERSION}
+ENV PATH="/go/bin:${PATH}"
 
 # xcaddy installieren
 RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
-# Caddy + Module bauen
-RUN xcaddy build $CADDY_VERSION \
+# Caddy + Module bauen (ohne Leerzeichen zwischen build und Version)
+RUN xcaddy build v${CADDY_VERSION} \
     --with github.com/caddy-dns/netcup \
     --replace github.com/libdns/netcup=github.com/Monviech/libdns-netcup@libdns-patch \
     --with github.com/caddy-dns/duckdns \
@@ -22,9 +24,12 @@ RUN xcaddy build $CADDY_VERSION \
 
 # Finales schlankes Caddy-Image
 FROM caddy:${CADDY_VERSION}
+
+# ARG nochmals für finalen Stage verfügbar machen
+ARG CADDY_VERSION
 ENV CADDY_VERSION=${CADDY_VERSION}
 
 # Kopiere die gebaute Caddy-Binary
-COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+COPY --from=builder /go/bin/caddy /usr/bin/caddy
 
 CMD ["caddy", "docker-proxy"]
