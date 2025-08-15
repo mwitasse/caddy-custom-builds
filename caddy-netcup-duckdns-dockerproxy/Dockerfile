@@ -21,7 +21,6 @@ RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 # Caddy + Module bauen (using latest)
 RUN xcaddy build \
     --with github.com/caddy-dns/netcup \
-    --replace github.com/libdns/netcup=github.com/Monviech/libdns-netcup@libdns-patch \
     --with github.com/caddy-dns/duckdns \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2
 
