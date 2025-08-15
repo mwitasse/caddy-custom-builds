@@ -13,7 +13,7 @@ ENV PATH="/go/bin:${PATH}"
 RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
 # Caddy + Module bauen
-RUN xcaddy build ${CADDY_VERSION} \
+RUN xcaddy build $CADDY_VERSION \
     --with github.com/caddy-dns/netcup \
     --replace github.com/libdns/netcup=github.com/Monviech/libdns-netcup@libdns-patch \
     --with github.com/caddy-dns/duckdns \
@@ -21,6 +21,8 @@ RUN xcaddy build ${CADDY_VERSION} \
 
 # Finales schlankes Caddy-Image
 FROM caddy:${CADDY_VERSION}
-COPY --from=builder /caddy /usr/bin/caddy
+
+# Kopiere die gebaute Caddy-Binary
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 
 CMD ["caddy", "docker-proxy"]
