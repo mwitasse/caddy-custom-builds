@@ -1,6 +1,6 @@
 # Caddy Docker build with Netcup Dynamic DNS and GeoIP Filter modules
 
-[![Docker Hub](https://img.shields.io/badge/Docker%20Hub%20-%20mwitasse%2Fcaddy--netcup--duckdns--dockerproxy%20-%20%230db7ed?style=flat&logo=docker)](https://hub.docker.com/r/mwitasse/caddy-netcup-duckdns-dockerproxy)
+[![Docker Hub](https://img.shields.io/badge/Docker%20Hub%20-%20mwitasse%2Fcaddy--netcup--duckdns--dockerproxy%20-%20%230db7ed?style=flat&logo=docker)](https://hub.docker.com/r/mwitassek/caddy-netcup-duckdns-dockerproxy)
 [![GitHub](https://img.shields.io/badge/GitHub%20-%20mwitasse%2Fcaddy--netcup--duckdns--dockerproxy%20-%20%23333?style=flat&logo=github)](https://ghcr.io/mwitasse/caddy-netcup-duckdns-dockerproxy)
 
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/mwitasse/caddy-custom-builds?label=Release)](https://github.com/mwitasse/caddy-custom-builds/releases)
@@ -16,7 +16,7 @@ This image is updated automatically by GitHub Actions when a new version of [Cad
 Since this image built off the official Caddy Docker image, the same [volumes](https://docs.docker.com/storage/volumes/) and/or [bind mounts](https://docs.docker.com/storage/bind-mounts/), ports mapping, etc. can be used with this container. Additional [environment variables](https://caddyserver.com/docs/caddyfile/concepts#environment-variables) may be needed for the added modules. Please, refer to the repository's [README](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#container-creation) file for further usage instructions.
 
 Docker builds for all Caddy supported platforms available at the following container registries:
-- [**Docker Hub**](https://hub.docker.com/r/mwitasse/caddy-netcup-duckdns-dockerproxy) `docker pull mwitasse/caddy-netcup-duckdns-dockerproxy:latest`
+- [**Docker Hub**](https://hub.docker.com/r/mwitassek/caddy-netcup-duckdns-dockerproxy) `docker pull mwitasse/caddy-netcup-duckdns-dockerproxy:latest`
 - [**GitHub Packages**](https://ghcr.io/mwitasse/caddy-netcup-duckdns-dockerproxy) `docker pull ghcr.io/mwitasse/caddy-netcup-duckdns-dockerproxy:latest`
 
 ### Tags
