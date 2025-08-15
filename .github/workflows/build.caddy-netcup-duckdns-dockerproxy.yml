@@ -37,9 +37,13 @@ jobs:
       - name: Set Caddy version from Dockerfile ARG
         id: version
         run: |
-          # Lies CADDY_VERSION aus Dockerfile-ARG
-          CADDY_VERSION=$(grep -E '^ARG CADDY_VERSION=' $DOCKER_NAME/Dockerfile | cut -d '=' -f2)
+          CADDY_VERSION=$(grep -E '^ARG CADDY_VERSION=' $DOCKER_NAME/Dockerfile | cut -d '=' -f2 | tr -d '[:space:]')
+          if [ -z "$CADDY_VERSION" ]; then
+            echo "Error: CADDY_VERSION not found in Dockerfile"
+            exit 1
+          fi
           echo "version=$CADDY_VERSION" >> $GITHUB_OUTPUT
+
 
       - name: Generate image metadata
         uses: docker/metadata-action@v5
@@ -49,9 +53,7 @@ jobs:
             docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}
             ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}
           tags: |
-            type=semver,pattern={{version}},value=v${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=v${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}},value=v${{ steps.version.outputs.version }}
+            type=raw,value=v${{ steps.version.outputs.version }}
             type=raw,value=latest
           labels: |
             org.opencontainers.image.title=${{ env.DOCKER_NAME }}
