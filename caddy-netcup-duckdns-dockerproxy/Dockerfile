@@ -22,11 +22,14 @@ RUN xcaddy build v${CADDY_VERSION} \
     --with github.com/caddy-dns/duckdns \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2
 
+
+# ARG vor FROM für finalen Stage verfügbar machen
+ARG CADDY_VERSION
+
 # Finales schlankes Caddy-Image
 FROM caddy:${CADDY_VERSION}
 
-# ARG nochmals für finalen Stage verfügbar machen
-ARG CADDY_VERSION
+# ENV für Runtime verfügbar machen
 ENV CADDY_VERSION=${CADDY_VERSION}
 
 # Kopiere die gebaute Caddy-Binary
