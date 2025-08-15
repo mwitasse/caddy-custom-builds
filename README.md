@@ -16,9 +16,9 @@ All commits and tags are signed with a GPG key to ensure their integrity and aut
 ### Caddy Images:
 
 - [**caddy-cloudflare**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-cloudflare): includes Cloudflare DNS and IPs modules.
-- [**caddy-netcup-duckdns**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-geoip): includes Netcup DNS and DuckDNS modules.
-- [**caddy-netcup-duckdns-ddns-dockerproxy**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-geoip): includes Netcup DNS, DuckDNS, Dynamic DNS and Docker Proxy modules.
-- [**caddy-netcup-duckdns-ddns-sablier-coraza-geoip-security-ratelimit-dockerproxy-crowdsec**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-geoip): includes Netcup DNS, DuckDNS, Dynamic DNS, Sablier, Coraza WAF, GeoIP Filter, Caddy Security, Rate Limit, Docker Proxy and CrowdSec Bouncer modules.
+- [**caddy-netcup-duckdns**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-duckdns): includes Netcup DNS and DuckDNS modules.
+- [**caddy-netcup-duckdns-dockerproxy**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-duckdns-dockerproxy): includes Netcup DNS, DuckDNS and Docker Proxy modules.
+
 
 
 ### Modules:
