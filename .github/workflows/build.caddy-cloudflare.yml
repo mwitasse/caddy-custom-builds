@@ -1,4 +1,4 @@
-# Workflow to build and push a Docker image to Docker Hub, GitHub and Quay Container Registries
+# Workflow to build and push a Docker image to Docker Hub and GitHub Container Registries
 name: Build caddy-cloudflare
 
 # Controls when the action will run
@@ -28,7 +28,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       labels: ${{ steps.metadata.outputs.labels }}
       tags: ${{ steps.metadata.outputs.tags }}
-      platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x,linux/arm/v7,linux/arm/v6
+      platforms: linux/amd64,linux/arm64,linux/arm/v7
 
     steps:
       - name: Checkout repository
@@ -47,7 +47,6 @@ jobs:
           images: |
             docker.io/${{ github.actor }}/${{ env.DOCKER_NAME }}
             ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}
-            quay.io/${{ github.actor }}/${{ env.DOCKER_NAME }}
           tags: |
             type=semver,pattern={{version}},value=v${{ steps.version.outputs.version }}
             type=semver,pattern={{major}}.{{minor}},value=v${{ steps.version.outputs.version }}
@@ -86,13 +85,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-
-      - name: Login to Quay Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.QUAY_TOKEN }}
 
       - name: Build and publish container image
         uses: docker/build-push-action@v6

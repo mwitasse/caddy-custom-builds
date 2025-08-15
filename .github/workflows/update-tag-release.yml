@@ -13,35 +13,7 @@ on:
 env:
   CADDY_BUILDS: |  # list of all Caddy Docker custom builds
     caddy-cloudflare
-    caddy-cloudflare-crowdsec
-    caddy-cloudflare-ddns
-    caddy-cloudflare-ddns-crowdsec
-    caddy-cloudflare-ddns-crowdsec-geoip
-    caddy-cloudflare-ddns-crowdsec-geoip-security
-    caddy-cloudflare-ddns-crowdsec-geoip-security-dockerproxy
-    caddy-cloudflare-ddns-security
-    caddy-cloudns
-    caddy-crowdsec
-    caddy-crowdsec-geoip
-    caddy-crowdsec-geoip-ratelimit-security-dockerproxy
-    caddy-desec-crowdsec-geoip-ratelimit
-    caddy-desec-geoip-coraza-dockerproxy
-    caddy-duckdns
-    caddy-duckdns-crowdsec
-    caddy-duckdns-ddns
-    caddy-duckdns-ddns-crowdsec
-    caddy-duckdns-ddns-crowdsec-geoip-security
     caddy-duckdns-ddns-crowdsec-geoip-security-dockerproxy
-    caddy-eventsexec
-    caddy-gandi
-    caddy-namecheap
-    caddy-netcup
-    caddy-netcup-ddns
-    caddy-netcup-ddns-geoip
-    caddy-netlify-geoip-security
-    caddy-ovh-crowdsec-geoip
-    caddy-porkbun-dockerproxy
-    caddy-ratelimit-dockerproxy-sablier
 
 # Jobs to run once the workflow is triggered
 jobs:
@@ -122,9 +94,8 @@ jobs:
         run: |
           echo "RELEASE_TEXT<<EOF" >> $GITHUB_ENV
           for caddy_build in $CADDY_BUILDS; do
-            echo "- $caddy_build: [Source](https://github.com/serfriz/caddy-custom-builds/tree/main/$caddy_build) / \
-            [GitHub Package](https://ghcr.io/serfriz/$caddy_build) / [Docker Hub](https://hub.docker.com/r/serfriz/$caddy_build) / \
-            [Quay Package](https://quay.io/serfriz/$caddy_build)" >> $GITHUB_ENV
+            echo "- $caddy_build: [Source](https://github.com/mwitasse/caddy-custom-builds/tree/main/$caddy_build) / \
+            [GitHub Package](https://ghcr.io/mwitasse/$caddy_build) / [Docker Hub](https://hub.docker.com/r/mwitasse/$caddy_build)" >> $GITHUB_ENV
           done
           echo "EOF" >> $GITHUB_ENV
 

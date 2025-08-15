@@ -1,84 +1,50 @@
 # Caddy Docker Custom Builds
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/serfriz/caddy-custom-builds?label=Release)](https://github.com/serfriz/caddy-custom-builds/releases)
-[![GitHub build status](https://img.shields.io/github/actions/workflow/status/serfriz/caddy-custom-builds/update-tag-release.yml?label=Auto-update)](https://github.com/serfriz/caddy-custom-builds/actions/workflows/update-tag-release.yml)
-[![License](https://img.shields.io/github/license/serfriz/caddy-custom-builds?label=License)](https://github.com/serfriz/caddy-custom-builds/blob/main/LICENSE)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/mwitasse/caddy-custom-builds?label=Release)](https://github.com/mwitasse/caddy-custom-builds/releases)
+[![GitHub build status](https://img.shields.io/github/actions/workflow/status/mwitasse/caddy-custom-builds/update-tag-release.yml?label=Auto-update)](https://github.com/mwitasse/caddy-custom-builds/actions/workflows/update-tag-release.yml)
+[![License](https://img.shields.io/github/license/mwitasse/caddy-custom-builds?label=License)](https://github.com/mwitasse/caddy-custom-builds/blob/main/LICENSE)
+
+Based on the [Caddy Custom Builds](https://github.com/serfriz/caddy-custom-builds) repo with a lot more module combinations. I decided to create my own repo for my individual needs only to also reduce the build cost.
 
 [Caddy](https://github.com/caddyserver/caddy) takes a [modular approach](https://caddyserver.com/docs/extending-caddy) to building Docker images, allowing users to include only the [modules](https://caddyserver.com/docs/modules/) they need. This repository aims to provide flexibility and convenience to run Caddy with specific combinations of modules by providing pre-built images according to the needs and preferences of the users.
 
-All custom images are updated automatically when a [new version](https://github.com/caddyserver/caddy/releases) of Caddy is released using the official [Caddy Docker](https://hub.docker.com/_/caddy) image. This is done by using GitHub Actions to build and push the images for all Caddy supported platforms to Docker Hub, GitHub Packages and Quay container registries. In addition, since the update cycle of many modules is faster than Caddy's, all custom images are periodically re-built with the latest version of their respective modules on the first day of every month. Those who are already running Caddy's latest version can force the update by re-creating the container (i.e. running `docker compose up --force-recreate` if using Docker Compose).
+All custom images are updated automatically when a [new version](https://github.com/caddyserver/caddy/releases) of Caddy is released using the official [Caddy Docker](https://hub.docker.com/_/caddy) image. This is done by using GitHub Actions to build and push the images for all Caddy supported platforms to Docker Hub and GitHub Packages. In addition, since the update cycle of many modules is faster than Caddy's, all custom images are periodically re-built with the latest version of their respective modules on the first day of every month. Those who are already running Caddy's latest version can force the update by re-creating the container (i.e. running `docker compose up --force-recreate` if using Docker Compose).
 
 All commits and tags are signed with a GPG key to ensure their integrity and authenticity, and 2FA is enabled in the accounts involved in the management of this repository and the container registries.
 
 ## Builds
 
-If you are looking for a specific custom build not available yet in this repository, please open a new [Issue](https://github.com/serfriz/caddy-custom-builds/issues) with your request. To make sure no broken or unsafe builds are created, the requested modules should be properly maintained and listed in the Caddy's [download page](https://caddyserver.com/download). Additional information and instructions can be found by clicking on the name of the Caddy images and modules listed below.
-
 ### Caddy Images:
 
-- [**caddy-cloudflare**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-cloudflare): includes Cloudflare DNS and IPs modules.
-- [**caddy-cloudflare-crowdsec**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-cloudflare-crowdsec): includes Cloudflare DNS/IPs and CrowdSec Bouncer modules.
-- [**caddy-cloudflare-ddns**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-cloudflare-ddns): includes Cloudflare Dynamic DNS and IPs modules.
-- [**caddy-cloudflare-ddns-crowdsec**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-cloudflare-ddns-crowdsec): includes Cloudflare Dynamic DNS/IPs and CrowdSec Bouncer modules.
-- [**caddy-cloudflare-ddns-crowdsec-geoip**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-cloudflare-ddns-crowdsec-geoip): includes Cloudflare Dynamic DNS/IPs, CrowdSec Bouncer and GeoIP Filter modules.
-- [**caddy-cloudflare-ddns-crowdsec-geoip-security**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-cloudflare-ddns-crowdsec-geoip-security): includes Cloudflare Dynamic DNS/IPs, CrowdSec Bouncer, GeoIP Filter and Caddy Security modules.
-- [**caddy-cloudflare-ddns-crowdsec-geoip-security-dockerproxy**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-cloudflare-ddns-crowdsec-geoip-security-dockerproxy): includes Cloudflare Dynamic DNS/IPs, CrowdSec Bouncer, GeoIP Filter, Caddy Security and Docker Proxy modules.
-- [**caddy-cloudflare-ddns-security**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-cloudflare-ddns-security): includes Cloudflare Dynamic DNS/IPs and Caddy Security modules.
-- [**caddy-cloudns**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-cloudns): includes ClouDNS DNS module.
-- [**caddy-crowdsec**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-crowdsec): includes CrowdSec Bouncer module.
-- [**caddy-crowdsec-geoip**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-crowdsec-geoip): includes CrowdSec Bouncer and GeoIP Filter modules.
-- [**caddy-crowdsec-geoip-ratelimit-security-dockerproxy**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-crowdsec-geoip-ratelimit-security-dockerproxy): includes CrowdSec Bouncer, GeoIP Filter, Rate Limit, Caddy Security and Docker Proxy modules.
-- [**caddy-desec-crowdsec-geoip-ratelimit**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-desec-crowdsec-geoip-ratelimit): includes deSEC DNS, CrowdSec Bouncer, GeoIP Filter and Rate Limit modules.
-- [**caddy-desec-geoip-coraza-dockerproxy**](https://github.com/serfriz/caddy-desec-geoip-coraza-dockerproxy): inludes deSEC DNS, GeoIP Filter, Coraza WAF and Docker Proxy modules.
-- [**caddy-duckdns**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-duckdns): includes DuckDNS DNS module.
-- [**caddy-duckdns-crowdsec**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-duckdns-crowdsec): includes DuckDNS DNS and CrowdSec Bouncer modules.
-- [**caddy-duckdns-ddns**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-duckdns-ddns): includes DuckDNS Dynamic DNS module.
-- [**caddy-duckdns-ddns-crowdsec**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-duckdns-ddns-crowdsec): includes DuckDNS Dynamic DNS and CrowdSec Bouncer modules.
-- [**caddy-duckdns-ddns-crowdsec-geoip-security**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-duckdns-ddns-crowdsec-geoip-security): includes DuckDNS Dynamic DNS, CrowdSec Bouncer, GeoIP Filter and Caddy Security modules.
-- [**caddy-duckdns-ddns-crowdsec-geoip-security-dockerproxy**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-duckdns-ddns-crowdsec-geoip-security-dockerproxy): includes DuckDNS Dynamic DNS, CrowdSec Bouncer, GeoIP Filter, Caddy Security and Docker Proxy modules.
-- [**caddy-eventsexec**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-eventsexec): includes Events Exec module.
-- [**caddy-gandi**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-gandi): includes Gandi DNS module.
-- [**caddy-namecheap**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-namecheap): includes Namecheap DNS module.
-- [**caddy-netcup**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-netcup): includes Netcup DNS module.
-- [**caddy-netcup-ddns**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-netcup): includes Netcup Dynamic DNS module.
-- [**caddy-netcup-ddns-geoip**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-netcup-geoip): includes Netcup Dynamic DNS and GeoIP Filter modules.
-- [**caddy-netlify-geoip-security**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-netlify-geoip-security): includes Netlify DNS, GeoIP Filter and Caddy Security modules.
-- [**caddy-ovh-crowdsec-geoip**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-ovh-crowdsec-geoip): includes OVH DNS, CrowdSec Bouncer and GeoIP Filter modules.
-- [**caddy-porkbun-dockerproxy**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-porkbun-dockerproxy): includes Porkbun DNS and Docker Proxy modules.
-- [**caddy-ratelimit-dockerproxy-sablier**](https://github.com/serfriz/caddy-custom-builds/tree/main/caddy-ratelimit-dockerproxy-sablier): includes Rate Limit, Docker Proxy and Sablier modules.
+- [**caddy-cloudflare**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-cloudflare): includes Cloudflare DNS and IPs modules.
+- [**caddy-netcup-duckdns**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-geoip): includes Netcup DNS and DuckDNS modules.
+- [**caddy-netcup-duckdns-ddns-dockerproxy**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-geoip): includes Netcup DNS, DuckDNS, Dynamic DNS and Docker Proxy modules.
+- [**caddy-netcup-duckdns-ddns-sablier-coraza-geoip-security-ratelimit-dockerproxy-crowdsec**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-geoip): includes Netcup DNS, DuckDNS, Dynamic DNS, Sablier, Coraza WAF, GeoIP Filter, Caddy Security, Rate Limit, Docker Proxy and CrowdSec Bouncer modules.
+
 
 ### Modules:
 
-- [**Cloudflare DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for Cloudflare DNS-01 ACME validation support | [caddy-dns/cloudflare](https://github.com/caddy-dns/cloudflare)
-- [**Cloudflare IPs**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#cloudflare-ips): to retrieve Cloudflare's current [IP ranges](https://www.cloudflare.com/ips/) | [WeidiDeng/caddy-cloudflare-ip](https://github.com/WeidiDeng/caddy-cloudflare-ip)
-- [**ClouDNS DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for ClouDNS DNS-01 ACME validation support | [anxuanzi/caddy-dns-cloudns](https://github.com/anxuanzi/caddy-dns-cloudns)
-- [**deSEC DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for deSEC DNS-01 ACME validation support | [caddy-dns/desec](https://github.com/caddy-dns/desec)
-- [**DuckDNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for DuckDNS DNS-01 ACME validation support | [caddy-dns/duckdns](https://github.com/caddy-dns/duckdns)
-- [**Gandi DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for Gandi DNS-01 ACME validation support | [caddy-dns/gandi](https://github.com/caddy-dns/gandi)
-- [**Namecheap DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for Namecheap DNS-01 ACME validation support | [caddy-dns/namecheap](https://github.com/caddy-dns/namecheap)
-- [**Netcup DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for Netcup DNS-01 ACME validation support | [caddy-dns/netcup](https://github.com/caddy-dns/netcup)
-- [**Netlify DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for Netlify DNS-01 ACME validation support | [caddy-dns/netlify](https://github.com/caddy-dns/netlify)
-- [**OVH DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for OVH DNS-01 ACME validation support | [caddy-dns/ovh](https://github.com/caddy-dns/ovh)
-- [**Porkbun DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dns-modules): for Porkbun DNS-01 ACME validation support | [caddy-dns/porkbun](https://github.com/caddy-dns/porkbun)
-- [**Dynamic DNS**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#dynamic-dns): updates the DNS records with the public IP address of your instance | [mholt/caddy-dynamicdns](https://github.com/mholt/caddy-dynamicdns)
-- [**CrowdSec Bouncer**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#crowdsec-bouncer): blocks malicious traffic based on [CrowdSec](https://www.crowdsec.net/) decisions | [hslatman/caddy-crowdsec-bouncer](https://github.com/hslatman/caddy-crowdsec-bouncer)
-- [**Rate Limit**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#rate-limit): implements both internal and distributed HTTP rate limiting | [mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit)
-- [**Caddy Security**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#caddy-security): to add different authentication methods including MFA/2FA support | [greenpau/caddy-security](https://github.com/greenpau/caddy-security)
-- [**Docker Proxy**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#docker-proxy): enables Caddy to be used for Docker containers via labels | [lucaslorentz/caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy)
-- [**Sablier**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#sablier): to start your containers on demand and shut them down automatically | [acouvreur/sablier](https://github.com/acouvreur/sablier)
-- [**GeoIP Filter**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#geoip-filter) to allow or block traffic from specific regions based on [Maxmind GeoLite2 database](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) | [porech/caddy-maxmind-geolocation](https://github.com/porech/caddy-maxmind-geolocation)
-- [**Coraza WAF**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#coraza-waf): a Web Application Firewall (WAF) for Caddy | [corazawaf/coraza-caddy](https://github.com/corazawaf/coraza-caddy)
-- [**Events Exec**](https://github.com/serfriz/caddy-custom-builds?tab=readme-ov-file#events-exec): implements an event handler that allows to execute commands on the system | [mholt/caddy-events-exec](https://github.com/mholt/caddy-events-exec)
+- [**Cloudflare DNS**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#dns-modules): for Cloudflare DNS-01 ACME validation support | [caddy-dns/cloudflare](https://github.com/caddy-dns/cloudflare)
+- [**Cloudflare IPs**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#cloudflare-ips): to retrieve Cloudflare's current [IP ranges](https://www.cloudflare.com/ips/) | [WeidiDeng/caddy-cloudflare-ip](https://github.com/WeidiDeng/caddy-cloudflare-ip)
+- [**DuckDNS**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#dns-modules): for DuckDNS DNS-01 ACME validation support | [caddy-dns/duckdns](https://github.com/caddy-dns/duckdns)
+- [**Netcup DNS**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#dns-modules): for Netcup DNS-01 ACME validation support | [caddy-dns/netcup](https://github.com/caddy-dns/netcup)
+- [**Dynamic DNS**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#dynamic-dns): updates the DNS records with the public IP address of your instance | [mholt/caddy-dynamicdns](https://github.com/mholt/caddy-dynamicdns)
+- [**CrowdSec Bouncer**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#crowdsec-bouncer): blocks malicious traffic based on [CrowdSec](https://www.crowdsec.net/) decisions | [hslatman/caddy-crowdsec-bouncer](https://github.com/hslatman/caddy-crowdsec-bouncer)
+- [**Rate Limit**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#rate-limit): implements both internal and distributed HTTP rate limiting | [mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit)
+- [**Caddy Security**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#caddy-security): to add different authentication methods including MFA/2FA support | [greenpau/caddy-security](https://github.com/greenpau/caddy-security)
+- [**Docker Proxy**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#docker-proxy): enables Caddy to be used for Docker containers via labels | [lucaslorentz/caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy)
+- [**Sablier**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#sablier): to start your containers on demand and shut them down automatically | [acouvreur/sablier](https://github.com/acouvreur/sablier)
+- [**GeoIP Filter**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#geoip-filter) to allow or block traffic from specific regions based on [Maxmind GeoLite2 database](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) | [porech/caddy-maxmind-geolocation](https://github.com/porech/caddy-maxmind-geolocation)
+- [**Coraza WAF**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#coraza-waf): a Web Application Firewall (WAF) for Caddy | [corazawaf/coraza-caddy](https://github.com/corazawaf/coraza-caddy)
 
 ## Usage
 
 Since all images from this repository are built off the official Caddy Docker image, the same [volumes](https://docs.docker.com/storage/volumes/) and/or [bind mounts](https://docs.docker.com/storage/bind-mounts/), ports mapping, environment variables, etc. can be used with this container. Please refer to the official [Caddy Docker](https://hub.docker.com/_/caddy) image and [docs](https://caddyserver.com/docs/) for more information on using Caddy.
 
 Docker builds for all Caddy supported platforms are available at the following container registries:
-- **Docker Hub** > `docker pull serfriz/<caddy-build-name>:latest`
-- **GitHub Packages** > `docker pull ghcr.io/serfriz/<caddy-build-name>:latest`
-- **Quay** > `docker pull quay.io/serfriz/<caddy-build-name>:latest`
+- **Docker Hub** > `docker pull mwitasse/<caddy-build-name>:latest`
+- **GitHub Packages** > `docker pull ghcr.io/mwitasse/<caddy-build-name>:latest`
 
-To pull a specific build, replace `<caddy-build-name>` with the desired one. For example, to pull the `caddy-cloudflare` build from Docker Hub, use `docker pull serfriz/caddy-cloudflare:latest`.
+To pull a specific build, replace `<caddy-build-name>` with the desired one. For example, to pull the `caddy-cloudflare` build from Docker Hub, use `docker pull mwitasse/caddy-cloudflare:latest`.
 
 ### Tags
 
@@ -108,17 +74,10 @@ docker run --rm -it \
   -e CLOUDFLARE_API_TOKEN=<token-value> \  # Cloudflare API token (if applicable)
   -e DUCKDNS_API_TOKEN=<token-value> \  # DuckDNS API token (if applicable)
   -e CROWDSEC_API_KEY=<key-value> \  # CrowdSec API key (if applicable)
-  -e GANDI_BEARER_TOKEN=<token-value> \  # Gandi API token (if applicable)
   -e NETCUP_CUSTOMER_NUMBER=<number-value> \  # Netcup customer number (if applicable)
   -e NETCUP_API_KEY=<key-value> \  # Netcup API key (if applicable)
   -e NETCUP_API_PASSWORD=<password-value> \  # Netcup API password (if applicable)
-  -e PORKBUN_API_KEY=<key-value> \  # Porkbun API key (if applicable)
-  -e PORKBUN_API_SECRET_KEY=<secret-key-value> \  # Porkbun API secret key (if applicable)
-  -e OVH_ENDPOINT=<endpoint-value> \  # OVH endpoint (if applicable)
-  -e OVH_APPLICATION_KEY=<application-value> \  # OVH application key (if applicable)
-  -e OVH_APPLICATION_SECRET=<secret-value> \  # OVH application secret (if applicable)
-  -e OVH_CONSUMER_KEY=<consumer-key-value> \  # OVH consumer key (if applicable)
-  serfriz/<caddy-build-name>:latest  # replace with the desired Caddy build name
+  mwitasse/<caddy-build-name>:latest  # replace with the desired Caddy build name
 ```
 
 The volume and bind mounts can be adjusted to meet to your needs, `$PWD` is used to reference the current working directory, but you can replace it with your preferred path. The environment variables are only required if the modules used in the build require them.
@@ -130,10 +89,9 @@ The [restart policy](https://docs.docker.com/config/containers/start-containers-
 #### Docker Compose
 
 ```yaml
-version: "3.7"
 services:
   caddy:
-    image: serfriz/<caddy-build-name>:latest  # replace with the desired Caddy build name
+    image: mwitasse/<caddy-build-name>:latest  # replace with the desired Caddy build name
     container_name: caddy  # feel free to choose your own container name
     restart: "unless-stopped"  # run container unless stopped by user (optional) 
     ports:
@@ -150,16 +108,9 @@ services:
       - CLOUDFLARE_API_TOKEN=<token-value>  # Cloudflare API token (if applicable)
       - DUCKDNS_API_TOKEN=<token-value>  # DuckDNS API token (if applicable)
       - CROWDSEC_API_KEY=<key-value>  # CrowdSec API key (if applicable)
-      - GANDI_BEARER_TOKEN=<token-value>  # Gandi API token (if applicable)
       - NETCUP_CUSTOMER_NUMBER=<number-value>  # Netcup customer number (if applicable)
       - NETCUP_API_KEY=<key-value>  # Netcup API key (if applicable)
       - NETCUP_API_PASSWORD=<password-value>  # Netcup API password (if applicable)
-      - PORKBUN_API_KEY=<key-value>  # Porkbun API key (if applicable)
-      - PORKBUN_API_SECRET_KEY=<secret-key-value>  # Porkbun API secret key (if applicable)
-      - OVH_ENDPOINT=<endpoint-value>  # OVH endpoint (if applicable)
-      - OVH_APPLICATION_KEY=<application-value>  # OVH application key (if applicable)
-      - OVH_APPLICATION_SECRET=<secret-value>  # OVH application secret (if applicable)
-      - OVH_CONSUMER_KEY=<consumer-key-value>  # OVH consumer key (if applicable)
 volumes:
   caddy-data:
     external: true
@@ -199,21 +150,10 @@ To make use of the different modules that provide DNS-01 ACME validation support
 {
   acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN} #  for Cloudflare
   # acme_dns duckdns {env.DUCKDNS_API_TOKEN} #  for DuckDNS
-  # acme_dns gandi {env.GANDI_BEARER_TOKEN} #  for Gandi
   # acme_dns netcup {  # for Netcup
   #   customer_number {env.NETCUP_CUSTOMER_NUMBER}
   #   api_key {env.NETCUP_API_KEY}
   #   api_password {env.NETCUP_API_PASSWORD}
-  # }
-  # acme_dns porkbun {  # for Porkbun
-  #   api_key {env.PORKBUN_API_KEY}
-  #   api_secret_key {env.PORKBUN_API_SECRET_KEY}
-  # }
-  # acme_dns ovh {  # for OVH
-  #   endpoint {env.OVH_ENDPOINT}
-  #   application_key {env.OVH_APPLICATION_KEY}
-  #   application_secret {env.OVH_APPLICATION_SECRET}
-  #   consumer_key {env.OVH_CONSUMER_KEY}
   # }
   # Please refer to the respective Caddy DNS plugin page for other DNS providers
 }
@@ -226,21 +166,10 @@ my.domain.tld {
   tls {
     dns cloudflare {env.CLOUDFLARE_API_TOKEN}  # for Cloudflare
     # dns duckdns {env.DUCKDNS_API_TOKEN}  # for DuckDNS
-    # dns gandi {env.GANDI_BEARER_TOKEN}  # for Gandi
     # dns netcup {  # for Netcup
     #   customer_number {env.NETCUP_CUSTOMER_NUMBER}
     #   api_key {env.NETCUP_API_KEY}
     #   api_password {env.NETCUP_API_PASSWORD}
-    # }
-    # dns porkbun {  # for Porkbun
-    #   api_key {env.PORKBUN_API_KEY}
-    #   api_secret_key {env.PORKBUN_API_SECRET_KEY}
-    # }
-    # dns ovh {  # for OVH
-    #   endpoint {env.OVH_ENDPOINT}
-    #   application_key {env.OVH_APPLICATION_KEY}
-    #   application_secret {env.OVH_APPLICATION_SECRET}
-    #   consumer_key {env.OVH_CONSUMER_KEY}
     # }
     # Please refer to the respective Caddy DNS plugin page for other DNS providers
   }
@@ -267,10 +196,6 @@ To generate a DuckDNS API token, login to your [DuckDNS](https://www.duckdns.org
 
 To generate a Netcup API token follow the steps from the [Netcup API docs](https://helpcenter.netcup.com/en/wiki/general/our-api). Use the `NETCUP_CUSTOMER_NUMBER`, `NETCUP_API_KEY` and `NETCUP_API_PASSWORD` environment variables in the Docker Compose/Run and `Caddyfile` configuration.
 
-#### Creating API Tokens for Other DNS Providers
-
-The process to generate API tokens for the rest of the DNS providers is similar to the Cloudflare, DuckDNS and Netcup ones. Please refer to the respective DNS provider's documentation for additional details.
-
 ### Cloudflare IPs
 
 To restrict access to your server only to Cloudflare's IP ranges, add the [trusted_proxies](https://caddyserver.com/docs/caddyfile/options#trusted-proxies) directive to the [global options](https://caddyserver.com/docs/caddyfile/options), under servers, in your `Caddyfile`. For additional details, refer to [trusted_proxies/cloudflare](https://caddyserver.com/docs/json/apps/http/servers/trusted_proxies/cloudflare/) documentation and [WeidiDeng/caddy-cloudflare-ip](https://github.com/WeidiDeng/caddy-cloudflare-ip) repository.
@@ -295,21 +220,10 @@ To keep your DNS records updated with the public IP address of your instance, ad
   dynamic_dns {
     provider cloudflare {env.CLOUDFLARE_API_TOKEN}  # for Cloudflare
     # provider duckdns {env.DUCKDNS_API_TOKEN}  # for DuckDNS
-    # provider gandi {env.GANDI_BEARER_TOKEN}  # for Gandi
     # provider netcup {  # for Netcup
     #   customer_number {env.NETCUP_CUSTOMER_NUMBER}
     #   api_key {env.NETCUP_API_KEY}
     #   api_password {env.NETCUP_API_PASSWORD}
-    # }
-    # provider porkbun {  # for Porkbun
-    #   api_key {env.PORKBUN_API_KEY}
-    #   api_secret_key {env.PORKBUN_API_SECRET_KEY}
-    # }
-    # provider ovh {  # for OVH
-    #   endpoint {env.OVH_ENDPOINT}
-    #   application_key {env.OVH_APPLICATION_KEY}
-    #   application_secret {env.OVH_APPLICATION_SECRET}
-    #   consumer_key {env.OVH_CONSUMER_KEY}
     # }
     # Please refer to the respective Caddy DNS plugin page for other DNS providers
     domains {
@@ -389,14 +303,10 @@ Information and examples about the usage of this module can be found on the on t
 
 Coraza is an open source, enterprise-grade, high performance Web Application Firewall (WAF) ready to protect your beloved applications. It is written in Go, supports ModSecurity SecLang rulesets and is 100% compatible with the OWASP Core Rule Set v4. Additional information about Coraza WAF can be found on the [corazawaf/coraza](https://github.com/corazawaf/coraza) repository, and configuration examples with the Caddy module on the [corazawaf/coraza-caddy](https://github.com/corazawaf/coraza-caddy) page.
 
-### Events Exec
-
-It can be used to execute commands on the system based on specific events, such as when a certificate is renewed. This is configured in the `Caddyfile` using the standard [events](https://caddyserver.com/docs/modules/events) directive along with the [events.handlers.exec](https://caddyserver.com/docs/modules/events.handlers.exec) module. Additional information and examples can be found in the [mholt/caddy-events-exec](https://github.com/mholt/caddy-events-exec) repository. Please be mindful of any security implications of the commands you run and how you configure this module.
-
 ## Contributing
 
-Feel free to contribute, request additional Caddy images with your preferred modules, and make things better by opening an [Issue](https://github.com/serfriz/caddy-custom-builds/issues) or [Pull Request](https://github.com/serfriz/caddy-custom-builds/pulls).
+Feel free to contribute, request additional Caddy images with your preferred modules, and make things better by opening an [Issue](https://github.com/mwitasse/caddy-custom-builds/issues) or [Pull Request](https://github.com/mwitasse/caddy-custom-builds/pulls).
 
 ## License
 
-Software under [GPL-3.0](https://github.com/serfriz/caddy-custom-builds/blob/main/LICENSE) ensures users' freedom to use, modify, and distribute it while keeping the source code accessible. It promotes transparency, collaboration, and knowledge sharing. Users agree to comply with the GPL-3.0 license terms and provide the same freedom to others.
+Software under [GPL-3.0](https://github.com/mwitasse/caddy-custom-builds/blob/main/LICENSE) ensures users' freedom to use, modify, and distribute it while keeping the source code accessible. It promotes transparency, collaboration, and knowledge sharing. Users agree to comply with the GPL-3.0 license terms and provide the same freedom to others.
