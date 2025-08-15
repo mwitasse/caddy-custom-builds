@@ -8,6 +8,7 @@ ENV CADDY_VERSION=${CADDY_VERSION}
 # Builder-Stage
 FROM golang:${GO_VERSION} AS builder
 ENV PATH="/go/bin:${PATH}"
+ENV CADDY_VERSION=${CADDY_VERSION}
 
 # xcaddy installieren
 RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
@@ -21,6 +22,7 @@ RUN xcaddy build $CADDY_VERSION \
 
 # Finales schlankes Caddy-Image
 FROM caddy:${CADDY_VERSION}
+ENV CADDY_VERSION=${CADDY_VERSION}
 
 # Kopiere die gebaute Caddy-Binary
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
