@@ -119,8 +119,11 @@ jobs:
           push: true
           provenance: false
           build-args: |
-            GO_VERSION=${{ needs.go-version.outputs.go_version }}
-            CADDY_VERSION=${{ steps.metadata.outputs.version }}
-          tags: ${{ needs.metadata.outputs.tags }}
+            CADDY_VERSION=2.10.0
+          tags: |
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v2.10.0
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:latest
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v2.10.0
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:latest
           labels: ${{ needs.metadata.outputs.labels }}
           platforms: ${{ needs.metadata.outputs.platforms }}
