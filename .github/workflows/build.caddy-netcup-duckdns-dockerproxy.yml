@@ -37,8 +37,12 @@ jobs:
       - name: Parse Caddy version
         id: version
         run: |
-          echo "version=$(grep -Eo 'caddy:[0-9]+\.[0-9]+\.[0-9]+$' $DOCKER_NAME/Dockerfile | cut -d ':' -f2)" \
-          | tee -a $GITHUB_OUTPUT
+          VERSION=$(grep -Eo 'caddy:[0-9]+\.[0-9]+\.[0-9]+$' $DOCKER_NAME/Dockerfile | cut -d ':' -f2)
+          if [ -z "$VERSION" ]; then
+            echo "Caddy version not found in Dockerfile!"
+            exit 1
+          fi
+          echo "version=$VERSION" | tee -a $GITHUB_OUTPUT
 
       - name: Generate image metadata
         uses: docker/metadata-action@v5
@@ -51,6 +55,7 @@ jobs:
             type=semver,pattern={{version}},value=v${{ steps.version.outputs.version }}
             type=semver,pattern={{major}}.{{minor}},value=v${{ steps.version.outputs.version }}
             type=semver,pattern={{major}},value=v${{ steps.version.outputs.version }}
+            type=raw,value=latest
           labels: |
             org.opencontainers.image.title=${{ env.DOCKER_NAME }}
             org.opencontainers.image.description=${{ env.DOCKER_DESCRIPTION }}
@@ -102,6 +107,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      - name: Debug metadata outputs
+        run: |
+          echo "tags from metadata: ${{ needs.metadata.outputs.tags }}"
+
       - name: Build and publish container image
         uses: docker/build-push-action@v6
         id: build
@@ -113,6 +122,7 @@ jobs:
           build-args: |
             GO_VERSION=${{ needs.go-version.outputs.go_version }}
             CADDY_VERSION=${{ steps.metadata.outputs.version }}
+          # Tags für beide Registries, immer mindestens latest
           tags: ${{ needs.metadata.outputs.tags }}
           labels: ${{ needs.metadata.outputs.labels }}
           platforms: ${{ needs.metadata.outputs.platforms }}
