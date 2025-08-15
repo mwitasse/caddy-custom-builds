@@ -8,9 +8,12 @@ ARG CADDY_VERSION=2.10.0
 FROM golang:${GO_VERSION} AS builder
 
 # ARG nochmals deklarieren für diesen Stage
-ARG CADDY_VERSION
+ARG CADDY_VERSION=2.10.0
 ENV CADDY_VERSION=${CADDY_VERSION}
 ENV PATH="/go/bin:${PATH}"
+
+# Debug: Variable ausgeben
+RUN echo "Building with Caddy version: ${CADDY_VERSION}"
 
 # xcaddy installieren
 RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
@@ -22,14 +25,11 @@ RUN xcaddy build v${CADDY_VERSION} \
     --with github.com/caddy-dns/duckdns \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2
 
-# ARG vor FROM für finalen Stage verfügbar machen
-ARG CADDY_VERSION
-
-# Finales schlankes Caddy-Image
-FROM caddy:${CADDY_VERSION}
+# Finales schlankes Caddy-Image (hardcoded Version als Workaround)
+FROM caddy:2.10.0
 
 # ENV für Runtime verfügbar machen
-ARG CADDY_VERSION
+ARG CADDY_VERSION=2.10.0
 ENV CADDY_VERSION=${CADDY_VERSION}
 
 # Kopiere die gebaute Caddy-Binary

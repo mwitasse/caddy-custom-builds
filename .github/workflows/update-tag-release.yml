@@ -53,6 +53,7 @@ jobs:
         run: |
           for caddy_build in $CADDY_BUILDS; do
             sed -i "s/caddy:[0-9]\+\.[0-9]\+\.[0-9]\+/caddy:${{ needs.metadata.outputs.version }}/g" ./$caddy_build/Dockerfile
+            sed -i "s/CADDY_VERSION=[0-9]\+\.[0-9]\+\.[0-9]\+/CADDY_VERSION=${{ needs.metadata.outputs.version }}/g" ./$caddy_build/Dockerfile
           done
 
       - name: Import GPG key
