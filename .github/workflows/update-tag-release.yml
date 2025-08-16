@@ -17,7 +17,6 @@ env:
 
 # Jobs to run once the workflow is triggered
 jobs:
-  if: false  # This disables the entire workflow  # Job to parse the Caddy version from the reference Dockerfile
   metadata:
     name: Get updated Caddy version
     runs-on: ubuntu-latest
