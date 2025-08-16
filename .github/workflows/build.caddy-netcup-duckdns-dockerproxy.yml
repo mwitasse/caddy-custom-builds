@@ -71,7 +71,7 @@ jobs:
       - name: Get Go version from Caddy go.mod
         id: goversion
         run: |
-          CADDY_VERSION=${{ steps.metadata.outputs.version }}
+          CADDY_VERSION=${{ needs.metadata.outputs.version }}
           GO_VERSION=$(curl -sSL https://raw.githubusercontent.com/caddyserver/caddy/v${CADDY_VERSION}/go.mod \
             | grep -E '^go [0-9]+\.[0-9]+' \
             | cut -d ' ' -f2)
@@ -118,11 +118,11 @@ jobs:
           provenance: false
           platforms: ${{ needs.metadata.outputs.platforms }}
           build-args: |
-            CADDY_VERSION=${{ env.CADDY_VERSION }}
-            GO_VERSION=1.24
+            CADDY_VERSION=${{ needs.metadata.outputs.version }}
+            GO_VERSION=${{ needs.go-version.outputs.go_version }}
           tags: |
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ env.CADDY_VERSION }}
-            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ env.CADDY_VERSION }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
             docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:latest
             ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:latest
           labels: ${{ needs.metadata.outputs.labels }}
