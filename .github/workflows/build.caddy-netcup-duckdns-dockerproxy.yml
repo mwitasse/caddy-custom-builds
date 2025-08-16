@@ -19,6 +19,7 @@ env:
 
 
 jobs:
+  if: false  # This disables the entire workflow
   # Job 1: Metadata generieren
   metadata:
     name: Get image and repository details
