@@ -21,7 +21,7 @@ RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 # Caddy + Module bauen mit explizitem Output-Pfad
 RUN xcaddy build v${CADDY_VERSION} --output /go/bin/caddy \
     --with github.com/caddy-dns/netcup \
-    --with github.com/caddy-dns/duckdns \
+    --with github.com/caddy-dns/duckdns
 
 # Prüfe ob die Binary erstellt wurde
 RUN ls -la /go/bin/caddy && chmod +x /go/bin/caddy
