@@ -17,9 +17,9 @@ env:
   DOCKER_NAME: caddy-netcup-duckdns
   DOCKER_DESCRIPTION: "Caddy Docker custom build with Netcup DNS and DuckDNS modules"
 
-# Jobs to run once the workflow is triggered
+
 jobs:
-  # Job to get image and repository details
+  # Job 1: Metadata generieren
   metadata:
     name: Get image and repository details
     runs-on: ubuntu-latest
@@ -33,14 +33,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: main
 
-      - name: Parse Caddy version
+      - name: Set Caddy version from Dockerfile ARG
         id: version
-        run: echo "version=$(grep -Eo 'caddy:[0-9]+\.[0-9]+\.[0-9]+$' $DOCKER_NAME/Dockerfile | cut -d ':' -f2)" | tee -a $GITHUB_OUTPUT
+        run: |
+          CADDY_VERSION=$(grep -E '^ARG CADDY_VERSION=' $DOCKER_NAME/Dockerfile | cut -d '=' -f2 | tr -d '[:space:]')
+          if [ -z "$CADDY_VERSION" ]; then
+            echo "Error: CADDY_VERSION not found in Dockerfile"
+            exit 1
+          fi
+          echo "version=$CADDY_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Generate image metadata with Caddy version
+
+      - name: Generate image metadata
         uses: docker/metadata-action@v5
         id: metadata
         with:
@@ -48,17 +53,35 @@ jobs:
             docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}
             ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}
           tags: |
-            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=v${{ steps.version.outputs.version }}
             type=raw,value=latest
           labels: |
             org.opencontainers.image.title=${{ env.DOCKER_NAME }}
             org.opencontainers.image.description=${{ env.DOCKER_DESCRIPTION }}
 
-  # Job to build and publish Docker image
+  # Job 2: Go-Version aus Caddy go.mod holen
+  go-version:
+    name: Get required Go version
+    runs-on: ubuntu-latest
+    needs: metadata
+    outputs:
+      go_version: ${{ steps.goversion.outputs.go_version }}
+
+    steps:
+      - name: Get Go version from Caddy go.mod
+        id: goversion
+        run: |
+          CADDY_VERSION=${{ needs.metadata.outputs.version }}
+          GO_VERSION=$(curl -sSL https://raw.githubusercontent.com/caddyserver/caddy/v${CADDY_VERSION}/go.mod \
+            | grep -E '^go [0-9]+\.[0-9]+' \
+            | cut -d ' ' -f2)
+          echo "go_version=${GO_VERSION}" >> $GITHUB_OUTPUT
+
+  # Job 3: Build and publish Docker image
   build:
     name: Build and publish Docker image
     runs-on: ubuntu-latest
-    needs: metadata
+    needs: [metadata, go-version]
 
     steps:
       - name: Checkout repository
@@ -78,7 +101,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Login to GitHub Container Repository
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -93,6 +116,13 @@ jobs:
           file: ./${{ env.DOCKER_NAME }}/Dockerfile
           push: true
           provenance: false
-          tags: ${{ needs.metadata.outputs.tags }}
-          labels: ${{ needs.metadata.outputs.labels }}
           platforms: ${{ needs.metadata.outputs.platforms }}
+          build-args: |
+            CADDY_VERSION=${{ needs.metadata.outputs.version }}
+            GO_VERSION=${{ needs.go-version.outputs.go_version }}
+          tags: |
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:latest
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:latest
+          labels: ${{ needs.metadata.outputs.labels }}

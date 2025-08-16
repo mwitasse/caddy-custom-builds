@@ -37,4 +37,11 @@ ENV CADDY_VERSION=${CADDY_VERSION}
 # Kopiere die gebaute Caddy-Binary
 COPY --from=builder /go/bin/caddy /usr/bin/caddy
 
+# Verify the custom binary works and show loaded plugins
+RUN caddy version > /tmp/caddy-version.txt && \
+    caddy list-modules --versions > /tmp/caddy-modules.txt
+
+LABEL caddy.build.info.available="true"
+LABEL caddy.build.files="/tmp/caddy-version.txt,/tmp/caddy-modules.txt"
+
 CMD ["caddy", "docker-proxy"]
