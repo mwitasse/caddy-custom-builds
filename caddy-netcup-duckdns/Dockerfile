@@ -2,7 +2,7 @@
 
 # Build-Argumente für Go- und Caddy-Version (global verfügbar)
 ARG GO_VERSION=1.24
-ARG CADDY_VERSION=
+ARG CADDY_VERSION=2.9.1
 
 # Builder-Stage
 FROM golang:${GO_VERSION} AS builder
