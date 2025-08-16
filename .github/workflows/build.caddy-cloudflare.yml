@@ -36,13 +36,7 @@ jobs:
 
       - name: Set Caddy version from Dockerfile ARG
         id: version
-        run: |
-          CADDY_VERSION=$(grep -E '^ARG CADDY_VERSION=' $DOCKER_NAME/Dockerfile | cut -d '=' -f2 | tr -d '[:space:]')
-          if [ -z "$CADDY_VERSION" ]; then
-            echo "Error: CADDY_VERSION not found in Dockerfile"
-            exit 1
-          fi
-          echo "version=$CADDY_VERSION" >> $GITHUB_OUTPUT
+        run: echo "version=$(grep -Eo 'caddy:[0-9]+\.[0-9]+\.[0-9]+$' $DOCKER_NAME/Dockerfile | cut -d ':' -f2)" | tee -a $GITHUB_OUTPUT
 
 
       - name: Generate image metadata
