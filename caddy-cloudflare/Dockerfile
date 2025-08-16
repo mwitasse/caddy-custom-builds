@@ -1,40 +1,13 @@
 # syntax=docker/dockerfile:1
+FROM caddy:2.10.0-builder AS builder
 
-# Build-Argumente für Go- und Caddy-Version (global verfügbar)
-ARG GO_VERSION=1.24
-ARG CADDY_VERSION=2.10.0
-
-# Builder-Stage
-FROM golang:${GO_VERSION} AS builder
-
-# ARG nochmals deklarieren für diesen Stage
-ARG CADDY_VERSION
-ENV CADDY_VERSION=${CADDY_VERSION}
-ENV PATH="/go/bin:${PATH}"
-
-# Debug: Variable ausgeben
-RUN echo "Building with Caddy version: ${CADDY_VERSION}"
-
-# xcaddy installieren
-RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
-
-# Caddy + Module bauen mit explizitem Output-Pfad
-RUN xcaddy build v${CADDY_VERSION} --output /go/bin/caddy \
+RUN xcaddy build \
     --with github.com/caddy-dns/cloudflare \
     --with github.com/WeidiDeng/caddy-cloudflare-ip
 
-# Prüfe ob die Binary erstellt wurde
-RUN ls -la /go/bin/caddy && chmod +x /go/bin/caddy
+FROM caddy:2.10.0
 
-# Finales schlankes Caddy-Image - verwende die Variable statt hardcoded
-FROM caddy:${CADDY_VERSION}
-
-# ARG nochmals deklarieren für diesen Stage
-ARG CADDY_VERSION
-ENV CADDY_VERSION=${CADDY_VERSION}
-
-# Kopiere die gebaute Caddy-Binary
-COPY --from=builder /go/bin/caddy /usr/bin/caddy
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 
 # Verify the custom binary works and show loaded plugins
 RUN caddy version > /tmp/caddy-version.txt && \
