@@ -1,0 +1,294 @@
+# Workflow to build and push a Docker image to Docker Hub and GitHub Container Registries
+name: Build caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip
+
+# Controls when the action will run
+on:
+  workflow_dispatch:  # allows to run the workflow manually from the Actions tab
+  schedule:
+    - cron: '0 0 1 * *'  # runs at 00:00 on the first day of every month
+  push:
+    branches: main
+    paths:
+      - caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip/Dockerfile
+
+# Environment variables available to all jobs and steps in this workflow
+env:
+  DOCKER_BUILDKIT: 1
+  DOCKER_NAME: caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip
+  DOCKER_DESCRIPTION: "Caddy Docker custom build with Netcup DNS, DuckDNS, Docker Proxy, Layer4, Replace-Response and GeoIP Filter modules"
+
+
+jobs:
+  # Job 1: Metadata generieren
+  metadata:
+    name: Get image and repository details
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      labels: ${{ steps.metadata.outputs.labels }}
+      tags: ${{ steps.metadata.outputs.tags }}
+      platforms: linux/amd64,linux/arm64,linux/arm/v7
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set Caddy version from Dockerfile ARG
+        id: version
+        run: |
+          CADDY_VERSION=$(grep -E '^ARG CADDY_VERSION=' $DOCKER_NAME/Dockerfile | cut -d '=' -f2 | tr -d '[:space:]')
+          if [ -z "$CADDY_VERSION" ]; then
+            echo "Error: CADDY_VERSION not found in Dockerfile"
+            exit 1
+          fi
+          echo "version=$CADDY_VERSION" >> $GITHUB_OUTPUT
+
+
+      - name: Generate image metadata
+        uses: docker/metadata-action@v5
+        id: metadata
+        with:
+          images: |
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}
+          tags: |
+            type=raw,value=v${{ steps.version.outputs.version }}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.title=${{ env.DOCKER_NAME }}
+            org.opencontainers.image.description=${{ env.DOCKER_DESCRIPTION }}
+
+  # Job 2: Go-Version aus Caddy go.mod holen
+  go-version:
+    name: Get required Go version
+    runs-on: ubuntu-latest
+    needs: metadata
+    outputs:
+      go_version: ${{ steps.goversion.outputs.go_version }}
+
+    steps:
+      - name: Get Go version from Caddy go.mod
+        id: goversion
+        run: |
+          CADDY_VERSION=${{ needs.metadata.outputs.version }}
+          GO_VERSION=$(curl -sSL https://raw.githubusercontent.com/caddyserver/caddy/v${CADDY_VERSION}/go.mod \
+            | grep -E '^go [0-9]+\.[0-9]+' \
+            | cut -d ' ' -f2)
+          echo "go_version=${GO_VERSION}" >> $GITHUB_OUTPUT
+
+  # Job 3: Build and publish Docker image
+  build:
+    name: Build and publish Docker image
+    runs-on: ubuntu-latest
+    needs: [metadata, go-version]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and publish container image
+        uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          file: ./${{ env.DOCKER_NAME }}/Dockerfile
+          push: true
+          provenance: false
+          platforms: ${{ needs.metadata.outputs.platforms }}
+          build-args: |
+            CADDY_VERSION=${{ needs.metadata.outputs.version }}
+            GO_VERSION=${{ needs.go-version.outputs.go_version }}
+          tags: |
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:latest
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:latest
+          labels: ${{ needs.metadata.outputs.labels }}
+          
+  # Job 4: Extract build info and create GitHub release
+  release:
+    name: Create GitHub Release with build info
+    runs-on: ubuntu-latest
+    needs: [metadata, build]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Extract build info from container
+        id: buildinfo
+        run: |
+          # Pull the built image
+          docker pull ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+          
+          # Create temporary container and extract build info
+          CONTAINER_ID=$(docker create ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }})
+          
+          # Extract the build info files
+          docker cp $CONTAINER_ID:/tmp/caddy-version.txt ./caddy-version.txt || echo "Caddy version info not available" > ./caddy-version.txt
+          docker cp $CONTAINER_ID:/tmp/caddy-modules.txt ./caddy-modules.txt || echo "Module info not available" > ./caddy-modules.txt
+          
+          # Clean up container
+          docker rm $CONTAINER_ID
+          
+          # Create release notes with module highlights
+          echo "# Caddy Custom Build v${{ needs.metadata.outputs.version }}" > release-notes.md
+          echo "" >> release-notes.md
+          echo "## Included Modules" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "This custom build includes the following additional modules:" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### DNS Modules" >> release-notes.md
+          echo "- **Netcup DNS**: DNS-01 ACME validation for Netcup" >> release-notes.md
+          echo "- **DuckDNS**: DNS-01 ACME validation for DuckDNS" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### Proxy & Routing Modules" >> release-notes.md
+          echo "- **Docker Proxy**: Configure Caddy via Docker labels" >> release-notes.md
+          echo "- **Layer4 (caddy-l4)**: TCP/UDP Layer 4 proxying with SNI-based routing" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### Security & Filtering Modules" >> release-notes.md
+          echo "- **MaxMind GeoIP**: Geolocation-based content filtering" >> release-notes.md
+          echo "- **Replace Response (http.filter)**: HTTP response body filtering and modification" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "## Build Information" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### Caddy Version" >> release-notes.md
+          echo '```' >> release-notes.md
+          cat caddy-version.txt >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### Loaded Modules" >> release-notes.md
+          echo '```' >> release-notes.md
+          cat caddy-modules.txt >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          echo "## Docker Images" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "Available on multiple platforms: \`linux/amd64\`, \`linux/arm64\`, \`linux/arm/v7\`" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "**Docker Hub:**" >> release-notes.md
+          echo '```bash' >> release-notes.md
+          echo "docker pull docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}" >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          echo "**GitHub Container Registry:**" >> release-notes.md
+          echo '```bash' >> release-notes.md
+          echo "docker pull ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}" >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          echo "## Quick Start" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### Basic Usage" >> release-notes.md
+          echo '```bash' >> release-notes.md
+          echo "docker run -d --name caddy \\" >> release-notes.md
+          echo "  -p 80:80 \\" >> release-notes.md
+          echo "  -p 443:443 \\" >> release-notes.md
+          echo "  -p 443:443/udp \\" >> release-notes.md
+          echo "  -v \$PWD/Caddyfile:/etc/caddy/Caddyfile \\" >> release-notes.md
+          echo "  -v caddy_data:/data \\" >> release-notes.md
+          echo "  ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}" >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### With Docker Proxy" >> release-notes.md
+          echo '```bash' >> release-notes.md
+          echo "docker run -d --name caddy \\" >> release-notes.md
+          echo "  -p 80:80 \\" >> release-notes.md
+          echo "  -p 443:443 \\" >> release-notes.md
+          echo "  -v /var/run/docker.sock:/var/run/docker.sock:ro \\" >> release-notes.md
+          echo "  -v caddy_data:/data \\" >> release-notes.md
+          echo "  -e CADDY_DOCKER_MODE=server \\" >> release-notes.md
+          echo "  ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}" >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          echo "## Example Configurations" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### Layer4 SNI Routing" >> release-notes.md
+          echo '```caddyfile' >> release-notes.md
+          echo "{" >> release-notes.md
+          echo "    layer4 {" >> release-notes.md
+          echo "        :443 {" >> release-notes.md
+          echo "            @domain1 tls sni *.domain1.com" >> release-notes.md
+          echo "            route @domain1 {" >> release-notes.md
+          echo "                proxy { upstream server1:443 }" >> release-notes.md
+          echo "            }" >> release-notes.md
+          echo "        }" >> release-notes.md
+          echo "    }" >> release-notes.md
+          echo "}" >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### GeoIP Filtering" >> release-notes.md
+          echo '```caddyfile' >> release-notes.md
+          echo "example.com {" >> release-notes.md
+          echo "    maxmind_geolocation {" >> release-notes.md
+          echo '        db_path "/geoip/GeoLite2-Country.mmdb"' >> release-notes.md
+          echo "        allow_countries DE AT CH" >> release-notes.md
+          echo "    }" >> release-notes.md
+          echo "    reverse_proxy backend:80" >> release-notes.md
+          echo "}" >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### Response Content Filtering (http.filter)" >> release-notes.md
+          echo '```caddyfile' >> release-notes.md
+          echo "api.example.com {" >> release-notes.md
+          echo "    reverse_proxy backend:8080" >> release-notes.md
+          echo "    replace {" >> release-notes.md
+          echo '        stream { "SECRET_TOKEN_.*" "REDACTED" }' >> release-notes.md
+          echo "    }" >> release-notes.md
+          echo "}" >> release-notes.md
+          echo '```' >> release-notes.md
+          echo "" >> release-notes.md
+          echo "For more examples and documentation, see the [README](https://github.com/${{ github.repository }})." >> release-notes.md
+
+      - name: Check if release exists
+        id: release_exists
+        run: |
+          if gh release view v${{ needs.metadata.outputs.version }} >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        if: steps.release_exists.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.metadata.outputs.version }}
+          name: Caddy Custom Build v${{ needs.metadata.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update existing GitHub Release
+        if: steps.release_exists.outputs.exists == 'true'
+        run: |
+          gh release edit v${{ needs.metadata.outputs.version }} \
+            --notes-file release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
