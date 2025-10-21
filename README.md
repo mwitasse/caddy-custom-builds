@@ -92,7 +92,7 @@ The [restart policy](https://docs.docker.com/config/containers/start-containers-
 services:
   caddy:
     image: mwitasse/<caddy-build-name>:latest  # replace with the desired Caddy build name
-    container_name: caddy  # feel free to choose your own container name
+    # container_name: caddy  # feel free to choose your own container name
     restart: "unless-stopped"  # run container unless stopped by user (optional) 
     ports:
       - "80:80"  # HTTP port

@@ -115,7 +115,7 @@ version: '3.8'
 services:
   caddy:
     image: mwitasse/caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip:latest
-    container_name: caddy
+    # container_name: caddy
     restart: unless-stopped
     ports:
       - "80:80"
