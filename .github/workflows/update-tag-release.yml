@@ -1,4 +1,4 @@
-```yaml
+
 # Workflow to update all Dockerfiles when a new version of Caddy is available
 # and create a new release and tag
 name: Update Dockerfiles, tag and release
@@ -163,4 +163,4 @@ jobs:
 
             Custom builds:
             ${{ steps.release_text.outputs.text }}
-```
+

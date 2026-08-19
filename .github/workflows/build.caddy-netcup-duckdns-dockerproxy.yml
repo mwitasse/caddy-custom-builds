@@ -1,49 +1,56 @@
-# Workflow to build and push a Docker image to Docker Hub and GitHub Container Registries
+# Workflow to build and push a Docker image to Docker Hub and GitHub Container Registry
 name: Build caddy-netcup-duckdns-dockerproxy
 
-# Controls when the action will run
 on:
-  workflow_dispatch:  # allows to run the workflow manually from the Actions tab
+  workflow_dispatch:
+
   schedule:
-    - cron: '0 0 1 * *'  # runs at 00:00 on the first day of every month
+    - cron: '0 0 1 * *'
+
   push:
-    branches: main
+    branches:
+      - main
     paths:
       - caddy-netcup-duckdns-dockerproxy/Dockerfile
 
-# Environment variables available to all jobs and steps in this workflow
 env:
-  DOCKER_BUILDKIT: 1
   DOCKER_NAME: caddy-netcup-duckdns-dockerproxy
   DOCKER_DESCRIPTION: "Caddy Docker custom build with Netcup DNS, DuckDNS and Docker Proxy modules"
 
-
 jobs:
-  # Job 1: Metadata generieren
   metadata:
-    name: Get image and repository details
+    name: Get image metadata
     runs-on: ubuntu-latest
 
     outputs:
       version: ${{ steps.version.outputs.version }}
-      labels: ${{ steps.metadata.outputs.labels }}
       tags: ${{ steps.metadata.outputs.tags }}
-      platforms: linux/amd64,linux/arm64,linux/arm/v7
+      labels: ${{ steps.metadata.outputs.labels }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Set Caddy version from Dockerfile ARG
+      - name: Get Caddy version
         id: version
+        shell: bash
         run: |
-          CADDY_VERSION=$(grep -E '^ARG CADDY_VERSION=' $DOCKER_NAME/Dockerfile | cut -d '=' -f2 | tr -d '[:space:]')
-          if [ -z "$CADDY_VERSION" ]; then
+          set -euo pipefail
+
+          version="$(
+            grep -E '^ARG CADDY_VERSION=' "$DOCKER_NAME/Dockerfile" |
+            head -1 |
+            cut -d '=' -f2 |
+            tr -d '[:space:]'
+          )"
+
+          if [[ -z "$version" ]]; then
             echo "Error: CADDY_VERSION not found in Dockerfile"
             exit 1
           fi
-          echo "version=$CADDY_VERSION" >> $GITHUB_OUTPUT
 
+          echo "Caddy version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Generate image metadata
         uses: docker/metadata-action@v6
@@ -59,35 +66,14 @@ jobs:
             org.opencontainers.image.title=${{ env.DOCKER_NAME }}
             org.opencontainers.image.description=${{ env.DOCKER_DESCRIPTION }}
 
-  # Job 2: Go-Version aus Caddy go.mod holen
-  go-version:
-    name: Get required Go version
+  build:
+    name: Build and publish
     runs-on: ubuntu-latest
     needs: metadata
-    outputs:
-      go_version: ${{ steps.goversion.outputs.go_version }}
-
-    steps:
-      - name: Get Go version from Caddy go.mod
-        id: goversion
-        run: |
-          CADDY_VERSION=${{ needs.metadata.outputs.version }}
-          GO_VERSION=$(curl -sSL https://raw.githubusercontent.com/caddyserver/caddy/v${CADDY_VERSION}/go.mod \
-            | grep -E '^go [0-9]+\.[0-9]+' \
-            | cut -d ' ' -f2)
-          echo "go_version=${GO_VERSION}" >> $GITHUB_OUTPUT
-
-  # Job 3: Build and publish Docker image
-  build:
-    name: Build and publish Docker image
-    runs-on: ubuntu-latest
-    needs: [metadata, go-version]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          ref: main
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -110,90 +96,102 @@ jobs:
 
       - name: Build and publish container image
         uses: docker/build-push-action@v7
-        id: build
         with:
           context: .
           file: ./${{ env.DOCKER_NAME }}/Dockerfile
           push: true
           provenance: false
-          platforms: ${{ needs.metadata.outputs.platforms }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           build-args: |
             CADDY_VERSION=${{ needs.metadata.outputs.version }}
-            GO_VERSION=${{ needs.go-version.outputs.go_version }}
-          tags: |
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
-            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:latest
-            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:latest
+          tags: ${{ needs.metadata.outputs.tags }}
           labels: ${{ needs.metadata.outputs.labels }}
-          
-  # Job 4: Extract build info and create GitHub release
+
   release:
-    name: Create GitHub Release with build info
+    name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [metadata, build]
+    needs:
+      - metadata
+      - build
+
+    permissions:
+      contents: write
+      packages: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Extract build info from container
-        id: buildinfo
+      - name: Pull built image
         run: |
-          # Pull the built image
+          docker pull \
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+
+      - name: Extract build information
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          container_id="$(
+            docker create \
+              ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+          )"
+
+          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
+
+          docker cp "$container_id:/tmp/caddy-version.txt" caddy-version.txt
+          docker cp "$container_id:/tmp/caddy-modules.txt" caddy-modules.txt
+
+      - name: Generate release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > release-notes.md <<EOF
+          # Caddy Custom Build v${{ needs.metadata.outputs.version }}
+
+          ## Build Information
+
+          ### Caddy Version
+
+          \`\`\`
+          $(cat caddy-version.txt)
+          \`\`\`
+
+          ### Loaded Modules
+
+          \`\`\`
+          $(cat caddy-modules.txt)
+          \`\`\`
+
+          ## Docker Images
+
+          Available on:
+          - linux/amd64
+          - linux/arm64
+          - linux/arm/v7
+
+          **Docker Hub**
+
+          \`\`\`bash
+          docker pull docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+          \`\`\`
+
+          **GitHub Container Registry**
+
+          \`\`\`bash
           docker pull ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
-          
-          # Create temporary container and extract build info
-          CONTAINER_ID=$(docker create ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }})
-          
-          # Extract the build info files
-          docker cp $CONTAINER_ID:/tmp/caddy-version.txt ./caddy-version.txt || echo "Caddy version info not available" > ./caddy-version.txt
-          docker cp $CONTAINER_ID:/tmp/caddy-modules.txt ./caddy-modules.txt || echo "Module info not available" > ./caddy-modules.txt
-          
-          # Clean up container
-          docker rm $CONTAINER_ID
-          
-          # Create release notes
-          echo "# Caddy Custom Build v${{ needs.metadata.outputs.version }}" > release-notes.md
-          echo "" >> release-notes.md
-          echo "## Build Information" >> release-notes.md
-          echo "" >> release-notes.md
-          echo "### Caddy Version" >> release-notes.md
-          echo '```' >> release-notes.md
-          cat caddy-version.txt >> release-notes.md
-          echo '```' >> release-notes.md
-          echo "" >> release-notes.md
-          echo "### Loaded Modules" >> release-notes.md
-          echo '```' >> release-notes.md
-          cat caddy-modules.txt >> release-notes.md
-          echo '```' >> release-notes.md
-          echo "" >> release-notes.md
-          echo "## Docker Images" >> release-notes.md
-          echo "- \`docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}\`" >> release-notes.md
-          echo "- \`ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}\`" >> release-notes.md
-          echo "" >> release-notes.md
-          echo "## Usage" >> release-notes.md
-          echo '```bash' >> release-notes.md
-          echo "docker run -d --name caddy \\" >> release-notes.md
-          echo "  -p 80:80 -p 443:443 \\" >> release-notes.md
-          echo "  -v \$PWD/Caddyfile:/etc/caddy/Caddyfile \\" >> release-notes.md
-          echo "  -v caddy_data:/data \\" >> release-notes.md
-          echo "  ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}" >> release-notes.md
-          echo '```' >> release-notes.md
+          \`\`\`
 
-      - name: Check if release exists
-        id: release_exists
-        run: |
-          if gh release view v${{ needs.metadata.outputs.version }} >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ## Usage
+
+          \`\`\`bash
+          docker run -d --name caddy \\
+            -p 80:80 -p 443:443 \\
+            -v \$PWD/Caddyfile:/etc/caddy/Caddyfile \\
+            -v caddy_data:/data \\
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+          \`\`\`
+          EOF
 
       - name: Create GitHub Release
-        if: steps.release_exists.outputs.exists == 'false'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ needs.metadata.outputs.version }}
@@ -202,13 +200,3 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update existing GitHub Release
-        if: steps.release_exists.outputs.exists == 'true'
-        run: |
-          gh release edit v${{ needs.metadata.outputs.version }} \
-            --notes-file release-notes.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
