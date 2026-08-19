@@ -146,7 +146,6 @@ jobs:
 
           {
             echo 'text<<EOF'
-            VERSION="${{ needs.metadata.outputs.version }}"
 
             for caddy_build in $CADDY_BUILDS; do
               echo "- **${caddy_build}** v${VERSION}: [Source](https://github.com/mwitasse/caddy-custom-builds/tree/main/${caddy_build}) / [GitHub Package](https://ghcr.io/mwitasse/${caddy_build}) / [Docker Hub](https://hub.docker.com/r/mwitassek/${caddy_build})"
