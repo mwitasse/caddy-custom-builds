@@ -35,7 +35,7 @@ jobs:
 
       - name: Set Caddy version from Dockerfile ARG
         id: version
-        run: echo "version=$(grep -Eo 'caddy:[0-9]+\.[0-9]+\.[0-9]+$' $DOCKER_NAME/Dockerfile | cut -d ':' -f2)" | tee -a $GITHUB_OUTPUT
+        run: echo "version=$(grep -E '^ARG CADDY_VERSION=' $DOCKER_NAME/Dockerfile | head -1 | cut -d '=' -f2)" | tee -a $GITHUB_OUTPUT
 
 
       - name: Set build number
