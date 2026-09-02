@@ -24,7 +24,7 @@ jobs:
 
     outputs:
       version: ${{ steps.version.outputs.version }}
-      tags: ${{ steps.metadata.outputs.tags }}
+      build_time: ${{ steps.build_time.outputs.build_time }}
       labels: ${{ steps.metadata.outputs.labels }}
 
     steps:
@@ -52,6 +52,15 @@ jobs:
           echo "Caddy version: $version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Set build number
+        id: build_time
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_time="$(date -u +%Y%m%d%H%M%S)"
+          echo "Build number: $build_time"
+          echo "build_time=$build_time" >> "$GITHUB_OUTPUT"
+
       - name: Generate image metadata
         uses: docker/metadata-action@v6
         id: metadata
@@ -72,6 +81,9 @@ jobs:
     needs: metadata
 
     steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -102,7 +114,11 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           build-args: |
             CADDY_VERSION=${{ needs.metadata.outputs.version }}
-          tags: ${{ needs.metadata.outputs.tags }}
+          tags: |
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}-${{ needs.metadata.outputs.build_time }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:latest
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}-${{ needs.metadata.outputs.build_time }}
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:latest
           labels: ${{ needs.metadata.outputs.labels }}
 
   release:
@@ -116,11 +132,15 @@ jobs:
       contents: write
       packages: write
 
+
+    env:
+      RELEASE_TAG: v${{ needs.metadata.outputs.version }}-${{ needs.metadata.outputs.build_time }}
+
     steps:
       - name: Pull built image
         run: |
           docker pull \
-            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:${{ env.RELEASE_TAG }}
 
       - name: Extract build information
         shell: bash
@@ -129,7 +149,7 @@ jobs:
 
           container_id="$(
             docker create \
-              ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+              ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:${{ env.RELEASE_TAG }}
           )"
 
           trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
@@ -143,7 +163,7 @@ jobs:
           set -euo pipefail
 
           cat > release-notes.md <<EOF
-          # Caddy Custom Build v${{ needs.metadata.outputs.version }}
+          # Caddy Custom Build ${{ env.RELEASE_TAG }}
 
           ## Build Information
 
@@ -169,13 +189,13 @@ jobs:
           **Docker Hub**
 
           \`\`\`bash
-          docker pull docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+          docker pull docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_NAME }}:${{ env.RELEASE_TAG }}
           \`\`\`
 
           **GitHub Container Registry**
 
           \`\`\`bash
-          docker pull ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+          docker pull ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:${{ env.RELEASE_TAG }}
           \`\`\`
 
           ## Usage
@@ -185,15 +205,15 @@ jobs:
             -p 80:80 -p 443:443 \\
             -v \$PWD/Caddyfile:/etc/caddy/Caddyfile \\
             -v caddy_data:/data \\
-            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:v${{ needs.metadata.outputs.version }}
+            ghcr.io/${{ github.actor }}/${{ env.DOCKER_NAME }}:${{ env.RELEASE_TAG }}
           \`\`\`
           EOF
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ needs.metadata.outputs.version }}
-          name: Caddy Custom Build v${{ needs.metadata.outputs.version }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Caddy Custom Build ${{ env.RELEASE_TAG }}
           body_path: release-notes.md
           draft: false
           prerelease: false
