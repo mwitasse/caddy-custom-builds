@@ -1,0 +1,88 @@
+# Propagates the upstream Caddy version from caddy-cloudflare/Dockerfile
+# (kept current by Dependabot) to the other Dockerfiles, so they stay in
+# sync. It no longer creates the git tag / GitHub release — the consolidated
+# build-and-release.yml produces the single aggregated
+# "v<version>-<build_time>-custom" release.
+name: Propagate Caddy version
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+        - main
+    paths:
+        - caddy-cloudflare/Dockerfile
+
+env:
+  CADDY_BUILDS: |
+   caddy-netcup-duckdns
+   caddy-netcup-duckdns-dockerproxy
+   caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip
+
+jobs:
+  propagate:
+    name: Sync version and commit
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout repository
+          uses: actions/checkout@v7
+          with:
+            token: ${{ secrets.PERSONAL_TOKEN }}
+
+        - name: Propagate Caddy version
+          shell: bash
+          run: |
+            set -euo pipefail
+
+              # Canonical source read caddy-cloudflare/Dockerfile, which
+              # Dependabot keeps current for the docker ecosystem.
+            version="$(
+              grep -E '^ARG CADDY_VERSION=' caddy-cloudflare/Dockerfile |
+              head -1 |
+              cut -d '=' -f2 |
+              tr -d '[:space:]'
+              )"
+
+            if [[ -z "$version" ]]; then
+              echo "Could not determine Caddy version from caddy-cloudflare/Dockerfile"
+              exit 1
+            fi
+
+            echo "Propagating Caddy v$version to sibling Dockerfiles"
+            for caddy_build in $CADDY_BUILDS; do
+              dockerfile="./$caddy_build/Dockerfile"
+              if [[ ! -f "$dockerfile" ]]; then
+                echo "Dockerfile not found: $dockerfile"
+                exit 1
+              fi
+              sed -i -E "s/ARG CADDY_VERSION=[0-9]+\.[0-9]+\.[0-9]+/ARG CADDY_VERSION=$version/" "$dockerfile"
+            done
+
+        - name: Import GPG key
+          uses: crazy-max/ghaction-import-gpg@v7
+          with:
+            gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+            passphrase: ${{ secrets.GPG_PASSPHRASE }}
+            git_user_signingkey: true
+            git_commit_gpgsign: true
+
+        - name: Commit and push
+          shell: bash
+          run: |
+            set -euo pipefail
+
+              # Re-read the canonical version so the commit message matches.
+            version="$(
+              grep -E '^ARG CADDY_VERSION=' caddy-cloudflare/Dockerfile |
+              head -1 |
+              cut -d '=' -f2 |
+              tr -d '[:space:]'
+              )"
+
+            if git diff --quiet -- ./*/Dockerfile; then
+              echo "All Dockerfiles already on Caddy v$version — nothing to do"
+            else
+              git add ./*/Dockerfile
+              git commit -S -m "Bump CADDY_VERSION to $version in all Dockerfiles"
+              git push
+            fi

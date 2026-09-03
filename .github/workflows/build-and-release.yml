@@ -17,6 +17,13 @@ on:
     paths:
       - 'caddy-*/Dockerfile'
 
+concurrency:
+  # A single upstream version bump triggers two runs (the caddy-cloudflare
+  # push and, seconds later, the propagation commit that syncs the other
+  # Dockerfiles). cancel-in-progress collapses overlapping runs into one.
+  group: caddy-custom-builds
+  cancel-in-progress: true
+
 jobs:
   metadata:
     name: Resolve Caddy version and build number
@@ -37,31 +44,38 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Every build must share the same Caddy version since they are
-          # published under a single release tag.
-          declare -A seen
-          for dockerfile in caddy-*/Dockerfile; do
-            version="$(
-              grep -E '^ARG CADDY_VERSION=' "$dockerfile" |
-              head -1 |
-              cut -d '=' -f2 |
-              tr -d '[:space:]'
-            )"
-            if [[ -z "$version" ]]; then
-              echo "Error: CADDY_VERSION not found in $dockerfile"
-              exit 1
-            fi
+          # caddy-cloudflare/Dockerfile is the canonical source: Dependabot
+          # keeps it current, and update-caddy-version.yml syncs the other
+          # Dockerfiles to it. A sibling that is still lagging (e.g. the very
+          # push that bumped caddy-cloudflare before propagation runs) no
+          # longer aborts the build — we warn and build with the canonical
+          # version for every build since they share one release tag.
+          version="$(
+            grep -E '^ARG CADDY_VERSION=' caddy-cloudflare/Dockerfile |
+           head -1 |
+           cut -d '=' -f2 |
+           tr -d '[:space:]'
+          )"
 
-            seen["$version"]=1
-            echo "$dockerfile -> Caddy $version"
-          done
-
-          if [[ ${#seen[@]} -gt 1 ]]; then
-            echo "Error: inconsistent CADDY_VERSION across Dockerfiles: ${!seen[*]}"
-            exit 1
+          if [[ -z "$version" ]]; then
+           echo "Error: CADDY_VERSION not found in caddy-cloudflare/Dockerfile"
+           exit 1
           fi
 
-          version="${!seen[*]}"
+          for dockerfile in caddy-*/Dockerfile; do
+           sibling="$(
+             grep -E '^ARG CADDY_VERSION=' "$dockerfile" |
+             head -1 |
+             cut -d '=' -f2 |
+             tr -d '[:space:]'
+            )"
+           if [[ "$sibling" == "$version" ]]; then
+             echo "$dockerfile -> Caddy $version"
+           else
+             echo "WARN: $dockerfile declares Caddy '${sibling:-unset}' but building with canonical $version"
+           fi
+          done
+
           echo "Caddy version: $version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -203,7 +217,30 @@ jobs:
           echo "----- release-notes.md -----"
           cat release-notes.md
 
+      - name: Skip duplicate release for this Caddy version
+        id: dedup
+        shell: bash
+        run: |
+         set -euo pipefail
+
+            # Build and propagation runs can both reach this job with the same
+            # base Caddy version but a different build_time. If a release for
+            # this base version already exists, skip creating a duplicate.
+         base="${RELEASE_TAG%-*-*}"
+         existing="$(
+          gh release list -R "${GITHUB_REPOSITORY}" --json tagName,prerelease,publishedAt --jq
+            --arg b "$base" '.[] | select((.tagName|startswith($b + "-")) and .prerelease==false) | .publishedAt'
+            2>/dev/null | head -1
+            )"
+         if [[ -n "$existing" ]]; then
+           echo "A release for $base (${existing}) already exists — skipping $RELEASE_TAG"
+           echo "result=skip" >> "$GITHUB_OUTPUT"
+         else
+           echo "result=release" >> "$GITHUB_OUTPUT"
+         fi
+
       - name: Create GitHub Release
+        if: steps.dedup.outputs.result != 'skip'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
