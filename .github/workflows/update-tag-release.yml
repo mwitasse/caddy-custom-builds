@@ -38,9 +38,9 @@ jobs:
           set -euo pipefail
 
           version="$(
-            grep -oE 'caddy:[0-9]+\.[0-9]+\.[0-9]+' caddy-cloudflare/Dockerfile |
+            grep -oE '(caddy:|CADDY_VERSION=)[0-9]+\.[0-9]+\.[0-9]+' caddy-cloudflare/Dockerfile |
             head -1 |
-            cut -d ':' -f2
+            grep -oE '[0-9]+\.[0-9]+\.[0-9]+'
           )"
 
           if [[ -z "$version" ]]; then
