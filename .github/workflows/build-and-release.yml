@@ -1,0 +1,214 @@
+# Build every Caddy custom build and publish them as one GitHub release.
+#
+# The 4 builds run as a matrix in a single run. A single release is created
+# with the tag `v<version>-<build_time>-custom` containing every build, so
+# module updates at the same Caddy version no longer collide.
+name: Build and release caddy custom builds
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '0 0 1 * *'
+
+  push:
+    branches:
+      - main
+    paths:
+      - 'caddy-*/Dockerfile'
+
+jobs:
+  metadata:
+    name: Resolve Caddy version and build number
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build_time: ${{ steps.build_time.outputs.build_time }}
+      release_tag: v${{ steps.version.outputs.version }}-${{ steps.build_time.outputs.build_time }}-custom
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Resolve Caddy version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Every build must share the same Caddy version since they are
+          # published under a single release tag.
+          declare -A seen
+          for dockerfile in caddy-*/Dockerfile; do
+            version="$(
+              grep -E '^ARG CADDY_VERSION=' "$dockerfile" |
+              head -1 |
+              cut -d '=' -f2 |
+              tr -d '[:space:]'
+            )"
+            if [[ -z "$version" ]]; then
+              echo "Error: CADDY_VERSION not found in $dockerfile"
+              exit 1
+            fi
+
+            seen["$version"]=1
+            echo "$dockerfile -> Caddy $version"
+          done
+
+          if [[ ${#seen[@]} -gt 1 ]]; then
+            echo "Error: inconsistent CADDY_VERSION across Dockerfiles: ${!seen[*]}"
+            exit 1
+          fi
+
+          version="${!seen[*]}"
+          echo "Caddy version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set build number
+        id: build_time
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_time="$(date -u +%Y%m%d%H%M%S)"
+          echo "Build number: $build_time"
+          echo "build_time=$build_time" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build and publish ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: metadata
+    permissions:
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: caddy-netcup-duckdns
+            description: "Caddy Docker custom build with Netcup DNS and DuckDNS modules"
+          - name: caddy-netcup-duckdns-dockerproxy
+            description: "Caddy Docker custom build with Netcup DNS, DuckDNS, and Docker Proxy modules"
+          - name: caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip
+            description: "Caddy Docker custom build with Netcup DNS, DuckDNS, Docker Proxy, Layer 4, MaxMind GeoIP, and Response Replacement modules"
+          - name: caddy-cloudflare
+            description: "Caddy Docker custom build with Cloudflare DNS and Cloudflare-IP modules"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and publish container image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./${{ matrix.name }}/Dockerfile
+          push: true
+          provenance: false
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          build-args: |
+            CADDY_VERSION=${{ needs.metadata.outputs.version }}
+          tags: |
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.name }}:${{ needs.metadata.outputs.release_tag }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.name }}:latest
+            ghcr.io/${{ github.actor }}/${{ matrix.name }}:${{ needs.metadata.outputs.release_tag }}
+            ghcr.io/${{ github.actor }}/${{ matrix.name }}:latest
+          labels: |
+            org.opencontainers.image.title=${{ matrix.name }}
+            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=GPL-3.0
+
+  release:
+    name: Create aggregated release
+    runs-on: ubuntu-latest
+    needs:
+      - metadata
+      - build
+
+    permissions:
+      contents: write
+
+    env:
+      RELEASE_TAG: ${{ needs.metadata.outputs.release_tag }}
+      CADDY_VERSION: v${{ needs.metadata.outputs.version }}
+
+    steps:
+      - name: Generate release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          dockerhub_user="${{ secrets.DOCKERHUB_USERNAME }}"
+          ghcr_user="${{ github.actor }}"
+
+          # Keep in sync with the build matrix `include` above.
+          builds=(
+            "caddy-netcup-duckdns|Caddy Docker custom build with Netcup DNS and DuckDNS modules"
+            "caddy-netcup-duckdns-dockerproxy|Caddy Docker custom build with Netcup DNS, DuckDNS, and Docker Proxy modules"
+            "caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip|Caddy Docker custom build with Netcup DNS, DuckDNS, Docker Proxy, Layer 4, MaxMind GeoIP, and Response Replacement modules"
+            "caddy-cloudflare|Caddy Docker custom build with Cloudflare DNS and Cloudflare-IP modules"
+          )
+
+          {
+            echo "# Caddy Custom Build $RELEASE_TAG"
+            echo
+            echo "Caddy version: \`$CADDY_VERSION\` (build \`$RELEASE_TAG\`)"
+            echo
+            echo "Platforms: \`linux/amd64\`, \`linux/arm64\`, \`linux/arm/v7\`"
+            echo
+            for entry in "${builds[@]}"; do
+              name="${entry%%|*}"
+              description="${entry#*|}"
+
+              echo "## ${name}"
+              echo
+              echo "${description}"
+              echo
+              echo '```bash'
+              echo "docker pull docker.io/${dockerhub_user}/${name}:$RELEASE_TAG"
+              echo "docker pull ghcr.io/${ghcr_user}/${name}:$RELEASE_TAG"
+              echo '```'
+              echo
+              echo '```bash'
+              echo "docker run -d --name caddy \\"
+              echo "  -p 80:80 -p 443:443 \\"
+              echo "  -v \$PWD/Caddyfile:/etc/caddy/Caddyfile \\"
+              echo "  -v caddy_data:/data \\"
+              echo "  ghcr.io/${ghcr_user}/${name}:$RELEASE_TAG"
+              echo '```'
+              echo
+            done
+          } > release-notes.md
+
+          echo "----- release-notes.md -----"
+          cat release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false
