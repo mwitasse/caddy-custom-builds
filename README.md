@@ -1,6 +1,6 @@
 # Caddy Docker Custom Builds
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/mwitasse/caddy-custom-builds?label=Release)](https://github.com/mwitasse/caddy-custom-builds/releases)
-[![GitHub build status](https://img.shields.io/github/actions/workflow/status/mwitasse/caddy-custom-builds/update-tag-release.yml?label=Auto-update)](https://github.com/mwitasse/caddy-custom-builds/actions/workflows/update-tag-release.yml)
+[![GitHub build status](https://img.shields.io/github/actions/workflow/status/mwitasse/caddy-custom-builds/update-caddy-version.yml?label=Auto-update)](https://github.com/mwitasse/caddy-custom-builds/actions/workflows/update-caddy-version.yml)
 [![License](https://img.shields.io/github/license/mwitasse/caddy-custom-builds?label=License)](https://github.com/mwitasse/caddy-custom-builds/blob/main/LICENSE)
 
 Based on the [Caddy Custom Builds](https://github.com/serfriz/caddy-custom-builds) repo with a lot more module combinations. I decided to create my own repo for my individual needs only to also reduce the build cost.
@@ -8,6 +8,8 @@ Based on the [Caddy Custom Builds](https://github.com/serfriz/caddy-custom-build
 [Caddy](https://github.com/caddyserver/caddy) takes a [modular approach](https://caddyserver.com/docs/extending-caddy) to building Docker images, allowing users to include only the [modules](https://caddyserver.com/docs/modules/) they need. This repository aims to provide flexibility and convenience to run Caddy with specific combinations of modules by providing pre-built images according to the needs and preferences of the users.
 
 All custom images are updated automatically when a [new version](https://github.com/caddyserver/caddy/releases) of Caddy is released using the official [Caddy Docker](https://hub.docker.com/_/caddy) image. This is done by using GitHub Actions to build and push the images for all Caddy supported platforms to Docker Hub and GitHub Packages. In addition, since the update cycle of many modules is faster than Caddy's, all custom images are periodically re-built with the latest version of their respective modules on the first day of every month. Those who are already running Caddy's latest version can force the update by re-creating the container (i.e. running `docker compose up --force-recreate` if using Docker Compose).
+
+Every [release](https://github.com/mwitasse/caddy-custom-builds/releases) lists the upstream Caddy version and the version of each module used in every build. A new release is only created when one of these versions has changed.
 
 All commits and tags are signed with a GPG key to ensure their integrity and authenticity, and 2FA is enabled in the accounts involved in the management of this repository and the container registries.
 
@@ -18,6 +20,7 @@ All commits and tags are signed with a GPG key to ensure their integrity and aut
 - [**caddy-cloudflare**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-cloudflare): includes Cloudflare DNS and IPs modules.
 - [**caddy-netcup-duckdns**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-duckdns): includes Netcup DNS and DuckDNS modules.
 - [**caddy-netcup-duckdns-dockerproxy**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-duckdns-dockerproxy): includes Netcup DNS, DuckDNS and Docker Proxy modules.
+- [**caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip**](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip): includes Netcup DNS, DuckDNS, Docker Proxy, Layer4, GeoIP Filter and Replace Response modules.
 
 
 
@@ -27,31 +30,27 @@ All commits and tags are signed with a GPG key to ensure their integrity and aut
 - [**Cloudflare IPs**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#cloudflare-ips): to retrieve Cloudflare's current [IP ranges](https://www.cloudflare.com/ips/) | [WeidiDeng/caddy-cloudflare-ip](https://github.com/WeidiDeng/caddy-cloudflare-ip)
 - [**DuckDNS**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#dns-modules): for DuckDNS DNS-01 ACME validation support | [caddy-dns/duckdns](https://github.com/caddy-dns/duckdns)
 - [**Netcup DNS**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#dns-modules): for Netcup DNS-01 ACME validation support | [caddy-dns/netcup](https://github.com/caddy-dns/netcup)
-- [**Dynamic DNS**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#dynamic-dns): updates the DNS records with the public IP address of your instance | [mholt/caddy-dynamicdns](https://github.com/mholt/caddy-dynamicdns)
-- [**CrowdSec Bouncer**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#crowdsec-bouncer): blocks malicious traffic based on [CrowdSec](https://www.crowdsec.net/) decisions | [hslatman/caddy-crowdsec-bouncer](https://github.com/hslatman/caddy-crowdsec-bouncer)
-- [**Rate Limit**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#rate-limit): implements both internal and distributed HTTP rate limiting | [mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit)
-- [**Caddy Security**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#caddy-security): to add different authentication methods including MFA/2FA support | [greenpau/caddy-security](https://github.com/greenpau/caddy-security)
 - [**Docker Proxy**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#docker-proxy): enables Caddy to be used for Docker containers via labels | [lucaslorentz/caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy)
-- [**Sablier**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#sablier): to start your containers on demand and shut them down automatically | [acouvreur/sablier](https://github.com/acouvreur/sablier)
+- [**Layer4**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#layer4): TCP/UDP app for Layer 4 proxying with SNI-based routing | [mholt/caddy-l4](https://github.com/mholt/caddy-l4)
 - [**GeoIP Filter**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#geoip-filter) to allow or block traffic from specific regions based on [Maxmind GeoLite2 database](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) | [porech/caddy-maxmind-geolocation](https://github.com/porech/caddy-maxmind-geolocation)
-- [**Coraza WAF**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#coraza-waf): a Web Application Firewall (WAF) for Caddy | [corazawaf/coraza-caddy](https://github.com/corazawaf/coraza-caddy)
+- [**Replace Response**](https://github.com/mwitasse/caddy-custom-builds?tab=readme-ov-file#replace-response): search and replace in HTTP response bodies | [caddyserver/replace-response](https://github.com/caddyserver/replace-response)
 
 ## Usage
 
 Since all images from this repository are built off the official Caddy Docker image, the same [volumes](https://docs.docker.com/storage/volumes/) and/or [bind mounts](https://docs.docker.com/storage/bind-mounts/), ports mapping, environment variables, etc. can be used with this container. Please refer to the official [Caddy Docker](https://hub.docker.com/_/caddy) image and [docs](https://caddyserver.com/docs/) for more information on using Caddy.
 
 Docker builds for all Caddy supported platforms are available at the following container registries:
-- **Docker Hub** > `docker pull mwitasse/<caddy-build-name>:latest`
+- **Docker Hub** > `docker pull mwitassek/<caddy-build-name>:latest`
 - **GitHub Packages** > `docker pull ghcr.io/mwitasse/<caddy-build-name>:latest`
 
-To pull a specific build, replace `<caddy-build-name>` with the desired one. For example, to pull the `caddy-cloudflare` build from Docker Hub, use `docker pull mwitasse/caddy-cloudflare:latest`.
+To pull a specific build, replace `<caddy-build-name>` with the desired one. For example, to pull the `caddy-cloudflare` build from Docker Hub, use `docker pull mwitassek/caddy-cloudflare:latest`.
 
 ### Tags
 
 The following tags are available for all images:
 
 - `latest`
-- `<version>` (eg: `2.7.4`, including: `2.7`, `2`, etc.)
+- `v<caddy-version>-<build_time>-custom` (eg: `v2.11.4-20261014000000-custom`), matching the tag of the corresponding [release](https://github.com/mwitasse/caddy-custom-builds/releases)
 
 ### Container Creation
 
@@ -73,11 +72,10 @@ docker run --rm -it \
   -v $PWD/srv:/srv \  # bind mount to serve static sites or files (optional)
   -e CLOUDFLARE_API_TOKEN=<token-value> \  # Cloudflare API token (if applicable)
   -e DUCKDNS_API_TOKEN=<token-value> \  # DuckDNS API token (if applicable)
-  -e CROWDSEC_API_KEY=<key-value> \  # CrowdSec API key (if applicable)
   -e NETCUP_CUSTOMER_NUMBER=<number-value> \  # Netcup customer number (if applicable)
   -e NETCUP_API_KEY=<key-value> \  # Netcup API key (if applicable)
   -e NETCUP_API_PASSWORD=<password-value> \  # Netcup API password (if applicable)
-  mwitasse/<caddy-build-name>:latest  # replace with the desired Caddy build name
+  mwitassek/<caddy-build-name>:latest  # replace with the desired Caddy build name
 ```
 
 The volume and bind mounts can be adjusted to meet to your needs, `$PWD` is used to reference the current working directory, but you can replace it with your preferred path. The environment variables are only required if the modules used in the build require them.
@@ -91,7 +89,7 @@ The [restart policy](https://docs.docker.com/config/containers/start-containers-
 ```yaml
 services:
   caddy:
-    image: mwitasse/<caddy-build-name>:latest  # replace with the desired Caddy build name
+    image: mwitassek/<caddy-build-name>:latest  # replace with the desired Caddy build name
     # container_name: caddy  # feel free to choose your own container name
     restart: "unless-stopped"  # run container unless stopped by user (optional) 
     ports:
@@ -107,7 +105,6 @@ services:
     environment:
       - CLOUDFLARE_API_TOKEN=<token-value>  # Cloudflare API token (if applicable)
       - DUCKDNS_API_TOKEN=<token-value>  # DuckDNS API token (if applicable)
-      - CROWDSEC_API_KEY=<key-value>  # CrowdSec API key (if applicable)
       - NETCUP_CUSTOMER_NUMBER=<number-value>  # Netcup customer number (if applicable)
       - NETCUP_API_KEY=<key-value>  # Netcup API key (if applicable)
       - NETCUP_API_PASSWORD=<password-value>  # Netcup API password (if applicable)
@@ -211,87 +208,15 @@ To restrict access to your server only to Cloudflare's IP ranges, add the [trust
 }
 ```
 
-### Dynamic DNS
-
-To keep your DNS records updated with the public IP address of your instance, add the [dynamic_dns](https://caddyserver.com/docs/modules/dynamic_dns) directive to the [global options](https://caddyserver.com/docs/caddyfile/options) in your `Caddyfile`. This module regularly queries a service for your public IP address and updates the DNS records via your DNS provider's API whenever it changes. For additional details and advanced configuration examples refer to [mholt/caddy-dynamicdns](https://github.com/mholt/caddy-dynamicdns) repository. The example shows the use case for Cloudflare DNS with the rest of the DNS providers commented out.
-
-```Caddyfile
-{
-  dynamic_dns {
-    provider cloudflare {env.CLOUDFLARE_API_TOKEN}  # for Cloudflare
-    # provider duckdns {env.DUCKDNS_API_TOKEN}  # for DuckDNS
-    # provider netcup {  # for Netcup
-    #   customer_number {env.NETCUP_CUSTOMER_NUMBER}
-    #   api_key {env.NETCUP_API_KEY}
-    #   api_password {env.NETCUP_API_PASSWORD}
-    # }
-    # Please refer to the respective Caddy DNS plugin page for other DNS providers
-    domains {
-      domain.tld
-    }
-  }
-}
-```
-
-Using the option [dynamic_domains](https://github.com/mholt/caddy-dynamicdns#dynamic-domains), it can also be configured to scan through the domains configured in the `Caddyfile` and try to manage those DNS records.
-
-### CrowdSec Bouncer
-
-[CrowdSec](https://www.crowdsec.net/) is a free and open source security automation tool that uses local logs and a set of scenarios to infer malicious intent. In addition to operating locally, an optional community integration is also available, through which crowd-sourced IP reputation lists are distributed.
-
-To make use of the CrowdSec Bouncer module, set the global [crowdsec](https://caddyserver.com/docs/modules/crowdsec) directive in your `Caddyfile`, and include it in every site you want to protect. For advanced usage, refer to the [hslatman/caddy-crowdsec-bouncer](https://github.com/hslatman/caddy-crowdsec-bouncer) repository.
-
-```Caddyfile
-{
-  debug  # makes Caddy logs more detailed (optional)
-  order crowdsec first  # forces the CrowdSec directive to be executed first
-  crowdsec {
-    api_url http://localhost:8080  # it should point to your CrowdSec API (it can be a remote URL)
-    api_key {env.CROWDSEC_API_KEY}
-  }
-}
-
-my.domain.tld {
-  crowdsec
-  log {
-    output file /var/log/access.log  # the path should match the bind mount of the log directory
-  }
-}
-```
-
-#### Creating a CrowdSec API Key
-
-To register the Caddy CrowdSec Bouncer to your API, you need to run the command below on the server where the CrowdSec API is installed, and use the generated API key `CROWDSEC_API_KEY` as environment variable when creating the Caddy container.
-
-```sh
-sudo cscli bouncers add caddy-bouncer
-```
-
-For additional details, refer to the [CrowdSec documentation](https://www.crowdsec.net/blog/introduction-to-the-local-api).
-
-### Rate Limit
-
-The [rate_limit](https://caddyserver.com/docs/modules/http.handlers.rate_limit#github.com/mholt/caddy-ratelimit) HTTP handler module lets you define rate limit zones, which have a unique name of your choosing. If a rate limit is exceeded, an HTTP error with status 429 will be returned. This error can be handled using the conventional error handling routes in your config.
-
-Additional information and `Caddyfile` configuration examples can be found in the [mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit) repository.
-
-### Caddy Security
-
-This plugin implements different authentication methods: Form-Based, Basic, Local, LDAP, OpenID Connect, OAuth 2.0, SAML, including MFA/2FA with App Authenticators and Yubico (formerly `caddy-auth-portal`). It is also an authorization plugin for HTTP request authorization based on JWT/PASETO tokens (formerly `caddy-authorize`, `caddy-auth-jwt`), and manages credentials for various integrations.
-
-Please, refer to the official [greenpau/caddy-security](https://authp.github.io/) documentation for additional details. Some configuration examples can also be found in the [authp/authp.github.io](https://github.com/authp/authp.github.io/tree/main/assets/conf) repository.
-
 ### Docker Proxy
 
 The plugin scans Docker metadata, looking for labels indicating that the service or container should be served by Caddy. Then, it generates an in-memory `Caddyfile` with site entries and proxies pointing to each Docker service by their DNS name or container IP. Every time a Docker object changes, the plugin updates the `Caddyfile` and triggers Caddy to gracefully reload with zero downtime.
 
 Additional information and `Caddyfile` configuration examples can be found in the [lucaslorentz/caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy) repository.
 
-### Sablier
+### Layer4
 
-[Sablier](https://github.com/acouvreur/sablier) is a free and open-source software that can scale your workloads on demand following different strategies. Your workloads can be a docker container, a kubernetes deployment and more (see [providers](https://acouvreur.github.io/sablier/#/providers/overview) for the full list). This plugin provides an integration with Caddy.
-
-Additional information and `Caddyfile` configuration examples can be found in the [acouvreur/sablier](https://acouvreur.github.io/sablier/#/plugins/caddy) documentation.
+The [caddy-l4](https://github.com/mholt/caddy-l4) app adds TCP/UDP (Layer 4) proxying to Caddy, for example to route traffic by SNI without terminating TLS. Configuration examples for the `layer4` global option can be found in the [README of the build that includes it](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip#layer4---sni-based-routing) and in the [mholt/caddy-l4](https://github.com/mholt/caddy-l4) repository.
 
 ### GeoIP Filter
 
@@ -299,9 +224,9 @@ Allows Caddy to filter traffic based on the client's IP address location. This m
 
 Information and examples about the usage of this module can be found on the on the [Caddy website's plugin page](https://caddyserver.com/docs/modules/http.matchers.maxmind_geolocation) and the [porech/caddy-maxmind-geolocation](https://github.com/porech/caddy-maxmind-geolocation) repository.
 
-### Coraza WAF
+### Replace Response
 
-Coraza is an open source, enterprise-grade, high performance Web Application Firewall (WAF) ready to protect your beloved applications. It is written in Go, supports ModSecurity SecLang rulesets and is 100% compatible with the OWASP Core Rule Set v4. Additional information about Coraza WAF can be found on the [corazawaf/coraza](https://github.com/corazawaf/coraza) repository, and configuration examples with the Caddy module on the [corazawaf/coraza-caddy](https://github.com/corazawaf/coraza-caddy) page.
+The [replace-response](https://github.com/caddyserver/replace-response) module adds an HTTP handler that searches and replaces text in response bodies. Examples are available in the [README of the build that includes it](https://github.com/mwitasse/caddy-custom-builds/tree/main/caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip#response-content-filtering) and in the module's repository.
 
 ## Contributing
 
