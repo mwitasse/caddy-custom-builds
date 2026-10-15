@@ -2,9 +2,18 @@
 
 ARG CADDY_VERSION=2.11.4
 
-FROM caddy:${CADDY_VERSION}-builder AS builder
+# Builder runs natively on the runner and cross-compiles for each target platform
+FROM --platform=$BUILDPLATFORM caddy:${CADDY_VERSION}-builder AS builder
 
-RUN xcaddy build \
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+
+ENV CGO_ENABLED=0 \
+    GOPROXY=https://proxy.golang.org|direct
+
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
+    xcaddy build \
     --with github.com/caddy-dns/netcup \
     --with github.com/caddy-dns/duckdns \
     --with github.com/lucaslorentz/caddy-docker-proxy/v2

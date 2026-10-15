@@ -3,10 +3,20 @@
 # The 4 builds run as a matrix in a single run. A single release is created
 # with the tag `v<version>-<build_time>-custom` containing every build, so
 # module updates at the same Caddy version no longer collide.
+#
+# Each build job reads the Caddy and module versions from the image it just
+# pushed (`caddy version` / `caddy build-info`) and uploads them as an
+# artifact. The release job turns those artifacts into the release notes and
+# skips the release when the version signature equals the latest release.
 name: Build and release caddy custom builds
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build and push images, but do not create the GitHub release (notes go to the job summary and an artifact)"
+        type: boolean
+        default: false
 
   schedule:
     - cron: '0 0 1 * *'
@@ -52,28 +62,28 @@ jobs:
           # version for every build since they share one release tag.
           version="$(
             grep -E '^ARG CADDY_VERSION=' caddy-cloudflare/Dockerfile |
-           head -1 |
-           cut -d '=' -f2 |
-           tr -d '[:space:]'
+              head -1 |
+              cut -d '=' -f2 |
+              tr -d '[:space:]'
           )"
 
           if [[ -z "$version" ]]; then
-           echo "Error: CADDY_VERSION not found in caddy-cloudflare/Dockerfile"
-           exit 1
+            echo "Error: CADDY_VERSION not found in caddy-cloudflare/Dockerfile"
+            exit 1
           fi
 
           for dockerfile in caddy-*/Dockerfile; do
-           sibling="$(
-             grep -E '^ARG CADDY_VERSION=' "$dockerfile" |
-             head -1 |
-             cut -d '=' -f2 |
-             tr -d '[:space:]'
+            sibling="$(
+              grep -E '^ARG CADDY_VERSION=' "$dockerfile" |
+                head -1 |
+                cut -d '=' -f2 |
+                tr -d '[:space:]'
             )"
-           if [[ "$sibling" == "$version" ]]; then
-             echo "$dockerfile -> Caddy $version"
-           else
-             echo "WARN: $dockerfile declares Caddy '${sibling:-unset}' but building with canonical $version"
-           fi
+            if [[ "$sibling" == "$version" ]]; then
+              echo "$dockerfile -> Caddy $version"
+            else
+              echo "WARN: $dockerfile declares Caddy '${sibling:-unset}' but building with canonical $version"
+            fi
           done
 
           echo "Caddy version: $version"
@@ -93,6 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: metadata
     permissions:
+      contents: read
       packages: write
 
     strategy:
@@ -152,6 +163,78 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.licenses=GPL-3.0
 
+      # Read the versions from the image that was just pushed, so the release
+      # notes show what was actually shipped. The modules are the ones listed
+      # as `--with` in the variant's Dockerfile (single source of truth); their
+      # versions come from `caddy build-info`. The multi-arch image contains
+      # the same modules on every platform, so amd64 is enough.
+      - name: Collect Caddy and module versions
+        shell: bash
+        env:
+          IMAGE: ghcr.io/${{ github.actor }}/${{ matrix.name }}:${{ needs.metadata.outputs.release_tag }}
+          BUILD_NAME: ${{ matrix.name }}
+          BUILD_DESCRIPTION: ${{ matrix.description }}
+        run: |
+          set -euo pipefail
+          mkdir -p versions
+
+          caddy_version="$(docker run --rm --platform linux/amd64 "$IMAGE" caddy version | awk '{print $1; exit}')"
+          if [[ -z "$caddy_version" ]]; then
+            echo "::error::Could not read the Caddy version from $IMAGE"
+            exit 1
+          fi
+
+          docker run --rm --platform linux/amd64 "$IMAGE" caddy build-info > build-info.txt
+          echo "----- caddy build-info ($BUILD_NAME) -----"
+          cat build-info.txt
+
+          modules_json='[]'
+          while read -r module; do
+            [[ -n "$module" ]] || continue
+            # Version of the module; if it is replaced (=>), use the replacement's version.
+            version="$(
+              awk -v m="$module" '
+                $1 == m {
+                  v = $2
+                  for (i = 1; i <= NF; i++) if ($i == "=>") v = $(i + 2)
+                  print v
+                  exit
+                }' build-info.txt
+            )"
+            if [[ -z "$version" ]]; then
+              echo "::error::Module $module (from $BUILD_NAME/Dockerfile) not found in caddy build-info"
+              exit 1
+            fi
+            echo "$module -> $version"
+            modules_json="$(jq -c --arg m "$module" --arg v "$version" '. + [{module: $m, version: $v}]' <<< "$modules_json")"
+          done < <(
+            grep -oE -- '--with[[:space:]]+[^[:space:]\\]+' "${BUILD_NAME}/Dockerfile" |
+              awk '{print $2}' |
+              sed -E 's/[@=].*$//'
+          )
+
+          if [[ "$modules_json" == '[]' ]]; then
+            echo "::error::No --with modules found in $BUILD_NAME/Dockerfile"
+            exit 1
+          fi
+
+          jq -n \
+            --arg name "$BUILD_NAME" \
+            --arg description "$BUILD_DESCRIPTION" \
+            --arg caddy "$caddy_version" \
+            --argjson modules "$modules_json" \
+            '{name: $name, description: $description, caddy: $caddy, modules: $modules}' \
+            > "versions/${BUILD_NAME}.json"
+          cat "versions/${BUILD_NAME}.json"
+
+      - name: Upload version data
+        uses: actions/upload-artifact@v4
+        with:
+          name: versions-${{ matrix.name }}
+          path: versions/${{ matrix.name }}.json
+          retention-days: 1
+          if-no-files-found: error
+
   release:
     name: Create aggregated release
     runs-on: ubuntu-latest
@@ -161,35 +244,45 @@ jobs:
 
     permissions:
       contents: write
-      packages: read
 
     env:
       RELEASE_TAG: ${{ needs.metadata.outputs.release_tag }}
       CADDY_VERSION: v${{ needs.metadata.outputs.version }}
+      DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+      GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
+      - name: Download version data
+        uses: actions/download-artifact@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          pattern: versions-*
+          path: versions
+          merge-multiple: true
 
       - name: Generate release notes
         shell: bash
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          GHCR_USER: ${{ github.actor }}
         run: |
           set -euo pipefail
+          shopt -s nullglob
 
-          dockerhub_user="${{ secrets.DOCKERHUB_USERNAME }}"
-          ghcr_user="${{ github.actor }}"
+          files=(versions/*.json)
+          if (( ${#files[@]} == 0 )); then
+            echo "::error::No version data found in ./versions"
+            exit 1
+          fi
 
-          # Keep in sync with the build matrix `include` above.
-          builds=(
-            "caddy-netcup-duckdns|Caddy Docker custom build with Netcup DNS and DuckDNS modules"
-            "caddy-netcup-duckdns-dockerproxy|Caddy Docker custom build with Netcup DNS, DuckDNS, and Docker Proxy modules"
-            "caddy-netcup-duckdns-dockerproxy-layer4-replace-geoip|Caddy Docker custom build with Netcup DNS, DuckDNS, Docker Proxy, Layer 4, MaxMind GeoIP, and Response Replacement modules"
-            "caddy-cloudflare|Caddy Docker custom build with Cloudflare DNS and Cloudflare-IP modules"
-          )
+          # Signature over everything that is shown in the notes except the
+          # build number: Caddy version plus all module versions per build.
+          # It is stored as a hidden comment at the end of the release body
+          # and compared against the latest release to detect duplicates.
+          signature="$(
+            for f in "${files[@]}"; do
+              jq -cS '{name, caddy, modules}' "$f"
+            done | sha256sum | awk '{print $1}'
+          )"
 
           {
             echo "# Caddy Custom Build $RELEASE_TAG"
@@ -198,27 +291,22 @@ jobs:
             echo
             echo "Platforms: \`linux/amd64\`, \`linux/arm64\`, \`linux/arm/v7\`"
             echo
-            for entry in "${builds[@]}"; do
-              name="${entry%%|*}"
-              description="${entry#*|}"
+            for f in "${files[@]}"; do
+              name="$(jq -r '.name' "$f")"
+              description="$(jq -r '.description' "$f")"
 
               echo "## ${name}"
               echo
               echo "${description}"
               echo
-
-              docker pull "ghcr.io/${ghcr_user}/${name}:$RELEASE_TAG"
-              modules_json="$(docker run --rm "ghcr.io/${ghcr_user}/${name}:$RELEASE_TAG" caddy list-modules --versions --json)"
-
-              echo "### Modules"
-              echo
-              echo "| Module | Type | Version |"
-              echo "|--------|------|---------|"
-              printf '%s\n' "$modules_json" | jq -r 'sort_by(.module_name) | .[] | "| " + .module_name + " | " + .module_type + " | " + (if .version then .version else "—" end) + " |"'
+              echo "| Component | Version |"
+              echo "| --- | --- |"
+              jq -r '"| Caddy | `\(.caddy)` |"' "$f"
+              jq -r '.modules[] | "| `\(.module)` | `\(.version)` |"' "$f"
               echo
               echo '```bash'
-              echo "docker pull docker.io/${dockerhub_user}/${name}:$RELEASE_TAG"
-              echo "docker pull ghcr.io/${ghcr_user}/${name}:$RELEASE_TAG"
+              echo "docker pull docker.io/${DOCKERHUB_USER}/${name}:$RELEASE_TAG"
+              echo "docker pull ghcr.io/${GHCR_USER}/${name}:$RELEASE_TAG"
               echo '```'
               echo
               echo '```bash'
@@ -226,39 +314,78 @@ jobs:
               echo "  -p 80:80 -p 443:443 \\"
               echo "  -v \$PWD/Caddyfile:/etc/caddy/Caddyfile \\"
               echo "  -v caddy_data:/data \\"
-              echo "  ghcr.io/${ghcr_user}/${name}:$RELEASE_TAG"
+              echo "  ghcr.io/${GHCR_USER}/${name}:$RELEASE_TAG"
               echo '```'
               echo
             done
+            echo "<!-- versions-signature: ${signature} -->"
           } > release-notes.md
 
           echo "----- release-notes.md -----"
           cat release-notes.md
 
-      - name: Skip duplicate release for this Caddy version
+      # Module updates at the same Caddy version are expected (monthly rebuild),
+      # so a release is only skipped when the version signature is identical to
+      # the latest published release. Releases without a signature (created
+      # before this check existed) never match, so the first run always releases.
+      - name: Skip release if versions are unchanged
         id: dedup
         shell: bash
         run: |
-         set -euo pipefail
+          set -euo pipefail
 
-            # Build and propagation runs can both reach this job with the same
-            # base Caddy version but a different build_time. If a release for
-            # this base version already exists, skip creating a duplicate.
-         base="${RELEASE_TAG%-*-*}"
-         existing="$(
-          gh release list -R "${GITHUB_REPOSITORY}" --json tagName,prerelease,publishedAt --jq
-            --arg b "$base" '.[] | select((.tagName|startswith($b + "-")) and .prerelease==false) | .publishedAt'
-            2>/dev/null | head -1
+          new_signature="$(grep -oE 'versions-signature: [0-9a-f]{64}' release-notes.md | awk '{print $2}')"
+
+          latest_tag="$(
+            gh release list -R "$GITHUB_REPOSITORY" \
+              --exclude-drafts --exclude-pre-releases --limit 1 \
+              --json tagName --jq '.[0].tagName // empty'
+          )"
+
+          previous_signature=""
+          if [[ -n "$latest_tag" ]]; then
+            previous_signature="$(
+              gh release view "$latest_tag" -R "$GITHUB_REPOSITORY" --json body --jq '.body' |
+                grep -oE 'versions-signature: [0-9a-f]{64}' |
+                awk '{print $2}' || true
             )"
-         if [[ -n "$existing" ]]; then
-           echo "A release for $base (${existing}) already exists — skipping $RELEASE_TAG"
-           echo "result=skip" >> "$GITHUB_OUTPUT"
-         else
-           echo "result=release" >> "$GITHUB_OUTPUT"
-         fi
+          fi
+
+          if [[ -n "$previous_signature" && "$previous_signature" == "$new_signature" ]]; then
+            echo "Latest release ${latest_tag} has identical Caddy/module versions — skipping $RELEASE_TAG"
+            echo "result=skip" >> "$GITHUB_OUTPUT"
+          else
+            echo "Versions differ from latest release (${latest_tag:-none}) — releasing $RELEASE_TAG"
+            echo "result=release" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dry run summary
+        if: env.DRY_RUN == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Dry run: release notes preview"
+            echo
+            echo "Tag: \`$RELEASE_TAG\` — dedup decision: \`${{ steps.dedup.outputs.result }}\`"
+            echo
+            echo "No release was created. Preview of the notes (raw Markdown below the line):"
+            echo
+            echo '---'
+            echo
+            cat release-notes.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload release notes preview
+        if: env.DRY_RUN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-preview
+          path: release-notes.md
+          retention-days: 7
 
       - name: Create GitHub Release
-        if: steps.dedup.outputs.result != 'skip'
+        if: env.DRY_RUN != 'true' && steps.dedup.outputs.result != 'skip'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
