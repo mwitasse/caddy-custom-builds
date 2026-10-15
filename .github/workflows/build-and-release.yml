@@ -229,7 +229,7 @@ jobs:
           cat "versions/${BUILD_NAME}.json"
 
       - name: Upload version data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: versions-${{ matrix.name }}
           path: versions/${{ matrix.name }}.json
@@ -254,7 +254,7 @@ jobs:
 
     steps:
       - name: Download version data
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: versions-*
           path: versions
@@ -379,7 +379,7 @@ jobs:
 
       - name: Upload release notes preview
         if: env.DRY_RUN == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-notes-preview
           path: release-notes.md
