@@ -191,15 +191,16 @@ jobs:
           modules_json='[]'
           while read -r module; do
             [[ -n "$module" ]] || continue
-            # Version of the module; if it is replaced (=>), use the replacement's version.
+            # `caddy build-info` prints tab-separated `go version -m` lines:
+            #   dep<TAB><module path><TAB><version><TAB><sum>
+            # A replaced module is followed by a `=><TAB><path><TAB><version><TAB><sum>`
+            # line; use the replacement's version if it has one.
             version="$(
-              awk -v m="$module" '
-                $1 == m {
-                  v = $2
-                  for (i = 1; i <= NF; i++) if ($i == "=>") v = $(i + 2)
-                  print v
-                  exit
-                }' build-info.txt
+              awk -F'\t' -v m="$module" '
+                $1 == "dep" && $2 == m { found = 1; v = $3; next }
+                found && $1 == "=>"    { if ($3 != "") v = $3; next }
+                found                  { exit }
+                END                    { if (found) print v }' build-info.txt
             )"
             if [[ -z "$version" ]]; then
               echo "::error::Module $module (from $BUILD_NAME/Dockerfile) not found in caddy build-info"
